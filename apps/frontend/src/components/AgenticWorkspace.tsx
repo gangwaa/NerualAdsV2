@@ -36,6 +36,7 @@ const AgenticWorkspace: React.FC = () => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [campaignInput, setCampaignInput] = useState('');
   
   // Refs to prevent race conditions
   const processingRef = useRef(false);
@@ -59,6 +60,7 @@ const AgenticWorkspace: React.FC = () => {
       setCampaignData([]);
       setChatMessages([]);
       setError(null);
+      setCampaignInput('');
       processingRef.current = false;
     } catch (error) {
       console.error('Reset error:', error);
@@ -406,6 +408,33 @@ const AgenticWorkspace: React.FC = () => {
     }
   };
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const fileContent = await file.text();
+      
+      // Append file content to campaign input
+      const fileInfo = `\n\n--- Uploaded File: ${file.name} ---\n${fileContent}`;
+      setCampaignInput(prev => prev + fileInfo);
+      
+      // Add notification
+      setChatMessages(prev => [...prev, {
+        type: 'agent',
+        content: `✅ File "${file.name}" uploaded successfully. The content has been added to your campaign requirements.`,
+        timestamp: new Date().toISOString()
+      }]);
+      
+    } catch (error) {
+      console.error('File upload error:', error);
+      setError('Failed to read file. Please ensure it\'s a valid text file.');
+    }
+    
+    // Clear the file input
+    event.target.value = '';
+  };
+
   const renderStepContent = () => {
     const currentStepData = campaignData.find(data => data.step === agentState.current_step);
     
@@ -413,9 +442,70 @@ const AgenticWorkspace: React.FC = () => {
       case 'campaign_data':
         if (campaignData.length === 0) {
           return (
-            <div className="text-center py-12">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Campaign Data Analysis</h3>
-              <p className="text-gray-500 mb-6">Start by entering your campaign requirements in the chat.</p>
+            <div className="py-8">
+              <h3 className="text-lg font-medium text-gray-900 mb-6">Campaign Data Analysis</h3>
+              
+              {/* Campaign Requirements Input */}
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Campaign Requirements
+                  </label>
+                  <textarea
+                    placeholder="Paste your campaign brief here or describe your requirements:&#10;&#10;• Advertiser: [Brand Name]&#10;• Budget: $[Amount]&#10;• Objective: [Brand Awareness/Performance/etc.]&#10;• Target Audience: [Demographics]&#10;• Timeline: [Start - End Date]&#10;• Additional Notes: [Any specific requirements]"
+                    className="w-full h-40 p-4 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    value={campaignInput}
+                    onChange={(e) => setCampaignInput(e.target.value)}
+                  />
+                </div>
+                
+                {/* Action Buttons */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    {/* Upload Campaign Brief Button */}
+                    <label className="neural-btn neural-btn-secondary cursor-pointer">
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx,.txt"
+                        className="hidden"
+                        onChange={handleFileUpload}
+                      />
+                      <div className="flex items-center space-x-2">
+                        <span>📎</span>
+                        <span>Upload Brief</span>
+                      </div>
+                    </label>
+                    
+                    {/* Clear Button */}
+                    <button
+                      onClick={() => setCampaignInput('')}
+                      className="text-sm text-gray-500 hover:text-gray-700"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  
+                  {/* Analyze Button */}
+                  <button
+                    onClick={() => campaignInput.trim() && handleCampaignInput(campaignInput)}
+                    disabled={!campaignInput.trim() || isProcessing}
+                    className={`neural-btn ${campaignInput.trim() && !isProcessing ? 'neural-btn-primary' : 'neural-btn-secondary'} px-6 py-2`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <span>🚀</span>
+                      <span>Analyze Campaign</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+              
+              {/* Helper Text */}
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>Tip:</strong> Provide as much detail as possible for better AI analysis. You can paste campaign briefs, 
+                  upload documents, or use the chat interface for interactive campaign planning.
+                </p>
+              </div>
             </div>
           );
         }
