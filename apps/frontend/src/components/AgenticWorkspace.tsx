@@ -237,7 +237,19 @@ const AgenticWorkspace: React.FC = () => {
   ];
 
   const getStepStatus = (stepId: string) => {
-    if (agentState.current_step === stepId) return 'active';
+    // If we're in complete state or have 100% progress, mark all previous steps as completed
+    if (agentState.avatar_state === 'complete' || agentState.progress >= 100) {
+      const stepIndex = steps.findIndex(s => s.id === stepId);
+      const currentIndex = steps.findIndex(s => s.id === agentState.current_step);
+      if (stepIndex <= currentIndex) return 'completed';
+    }
+    
+    if (agentState.current_step === stepId) {
+      // If agent is complete and this is the current step, mark as completed
+      if (agentState.avatar_state === 'complete') return 'completed';
+      return 'active';
+    }
+    
     const stepIndex = steps.findIndex(s => s.id === stepId);
     const currentIndex = steps.findIndex(s => s.id === agentState.current_step);
     return stepIndex < currentIndex ? 'completed' : 'pending';
@@ -245,6 +257,15 @@ const AgenticWorkspace: React.FC = () => {
 
   const getCurrentStepData = () => {
     return campaignData.find(data => data.step === agentState.current_step);
+  };
+
+  const isWorkflowComplete = () => {
+    return agentState.avatar_state === 'complete' || agentState.progress >= 100;
+  };
+
+  const isStepDataLoaded = (stepId: string) => {
+    const stepHasData = campaignData.some(data => data.step === stepId);
+    return stepHasData || isWorkflowComplete();
   };
 
   const getStepColors = (color: string, isProcessing: boolean, status: string) => {
@@ -286,10 +307,25 @@ const AgenticWorkspace: React.FC = () => {
   };
 
   const renderStepContent = () => {
-    const stepData = getCurrentStepData();
+    // Show content for the current step, or if workflow is complete, show the most advanced step with data
+    let stepToDisplay = agentState.current_step;
+    let stepData = campaignData.find(data => data.step === stepToDisplay);
     
-    switch (agentState.current_step) {
+    // If workflow is complete, find the highest step with data to display
+    if (isWorkflowComplete()) {
+      const stepsWithData = steps.reverse().find(step => 
+        campaignData.some(data => data.step === step.id)
+      );
+      if (stepsWithData) {
+        stepToDisplay = stepsWithData.id;
+        stepData = campaignData.find(data => data.step === stepToDisplay);
+      }
+      steps.reverse(); // restore original order
+    }
+    
+    switch (stepToDisplay) {
       case 'campaign_data':
+        const campaignStepData = campaignData.find(data => data.step === 'campaign_data');
         return (
           <div className="space-y-6">
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
@@ -301,7 +337,7 @@ const AgenticWorkspace: React.FC = () => {
                   <h3 className="text-lg font-semibold text-blue-900">Campaign Parameters</h3>
                   <p className="text-blue-700 text-sm">Define campaign basics</p>
                 </div>
-                {stepData && (
+                {(campaignStepData || isWorkflowComplete()) && (
                   <div className="ml-auto">
                     <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
                       ✓ Identified
@@ -310,13 +346,13 @@ const AgenticWorkspace: React.FC = () => {
                 )}
               </div>
               
-              {stepData?.data ? (
+              {campaignStepData?.data ? (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Advertiser</label>
                     <input 
                       type="text" 
-                      value={stepData.data.advertiser || ''} 
+                      value={campaignStepData.data.advertiser || ''} 
                       className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
                       readOnly
                     />
@@ -325,7 +361,7 @@ const AgenticWorkspace: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Budget</label>
                     <input 
                       type="text" 
-                      value={stepData.data.budget ? `$${stepData.data.budget?.toLocaleString()}` : ''} 
+                      value={campaignStepData.data.budget ? `$${campaignStepData.data.budget?.toLocaleString()}` : ''} 
                       className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
                       readOnly
                     />
@@ -334,7 +370,7 @@ const AgenticWorkspace: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Objective</label>
                     <input 
                       type="text" 
-                      value={stepData.data.objective || ''} 
+                      value={campaignStepData.data.objective || ''} 
                       className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
                       readOnly
                     />
@@ -343,7 +379,7 @@ const AgenticWorkspace: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Timeline</label>
                     <input 
                       type="text" 
-                      value={stepData.data.timeline || ''} 
+                      value={campaignStepData.data.timeline || ''} 
                       className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
                       readOnly
                     />
@@ -364,6 +400,7 @@ const AgenticWorkspace: React.FC = () => {
         );
         
       case 'advertiser_preferences':
+        const preferencesData = campaignData.find(data => data.step === 'advertiser_preferences');
         return (
           <div className="space-y-6">
             <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
@@ -375,7 +412,7 @@ const AgenticWorkspace: React.FC = () => {
                   <h3 className="text-lg font-semibold text-purple-900">Historical Data</h3>
                   <p className="text-purple-700 text-sm">Advertiser behavioral insights</p>
                 </div>
-                {stepData && (
+                {(preferencesData || isWorkflowComplete()) && (
                   <div className="ml-auto">
                     <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
                       ✓ Retrieved
@@ -384,13 +421,13 @@ const AgenticWorkspace: React.FC = () => {
                 )}
               </div>
               
-              {stepData?.data ? (
+              {preferencesData?.data ? (
                 <div className="space-y-4">
                   <div className="grid grid-cols-3 gap-4">
                     <div>
                       <h4 className="font-medium text-gray-700 mb-2">Content Preferences</h4>
                       <div className="space-y-1">
-                        {stepData.data.content_preferences?.map((pref: string, index: number) => (
+                        {preferencesData.data.content_preferences?.map((pref: string, index: number) => (
                           <span key={index} className="inline-block px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs mr-1">
                             {pref}
                           </span>
@@ -400,7 +437,7 @@ const AgenticWorkspace: React.FC = () => {
                     <div>
                       <h4 className="font-medium text-gray-700 mb-2">Geographic Focus</h4>
                       <div className="space-y-1">
-                        {stepData.data.geo_preferences?.map((geo: string, index: number) => (
+                        {preferencesData.data.geo_preferences?.map((geo: string, index: number) => (
                           <span key={index} className="inline-block px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs mr-1">
                             {geo}
                           </span>
@@ -410,7 +447,7 @@ const AgenticWorkspace: React.FC = () => {
                     <div>
                       <h4 className="font-medium text-gray-700 mb-2">Device Targeting</h4>
                       <div className="space-y-1">
-                        {stepData.data.device_preferences?.map((device: string, index: number) => (
+                        {preferencesData.data.device_preferences?.map((device: string, index: number) => (
                           <span key={index} className="inline-block px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs mr-1">
                             {device}
                           </span>
@@ -434,6 +471,7 @@ const AgenticWorkspace: React.FC = () => {
         );
         
       case 'audience_generation':
+        const audienceData = campaignData.find(data => data.step === 'audience_generation');
         return (
           <div className="space-y-6">
             <div className="bg-green-50 border border-green-200 rounded-lg p-6">
@@ -445,7 +483,7 @@ const AgenticWorkspace: React.FC = () => {
                   <h3 className="text-lg font-semibold text-green-900">Audience Analysis</h3>
                   <p className="text-green-700 text-sm">ACR segments & pricing insights</p>
                 </div>
-                {stepData && (
+                {(audienceData || isWorkflowComplete()) && (
                   <div className="ml-auto">
                     <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
                       ✓ Synthesized
@@ -454,13 +492,13 @@ const AgenticWorkspace: React.FC = () => {
                 )}
               </div>
               
-              {stepData?.data ? (
+              {audienceData?.data ? (
                 <div className="space-y-4">
-                  {stepData.data.acr_segments && (
+                  {audienceData.data.acr_segments && (
                     <div>
                       <h4 className="font-medium text-gray-700 mb-3">ACR Audience Segments</h4>
                       <div className="grid grid-cols-2 gap-3">
-                        {stepData.data.acr_segments.map((segment: string, index: number) => (
+                        {audienceData.data.acr_segments.map((segment: string, index: number) => (
                           <div key={index} className="flex items-center space-x-2 p-3 bg-white border border-green-200 rounded-lg">
                             <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                               <span className="text-green-600 text-sm">👥</span>
@@ -472,11 +510,11 @@ const AgenticWorkspace: React.FC = () => {
                     </div>
                   )}
                   
-                  {stepData.data.cpm_floors && (
+                  {audienceData.data.cpm_floors && (
                     <div>
                       <h4 className="font-medium text-gray-700 mb-3">CPM Floor Pricing</h4>
                       <div className="grid grid-cols-2 gap-4">
-                        {Object.entries(stepData.data.cpm_floors).map(([device, cpm]) => (
+                        {Object.entries(audienceData.data.cpm_floors).map(([device, cpm]) => (
                           <div key={device} className="bg-white p-3 border border-green-200 rounded-lg">
                             <div className="text-sm font-medium text-gray-700">{device}</div>
                             <div className="text-lg font-bold text-green-600">${cpm} CPM</div>
@@ -501,6 +539,7 @@ const AgenticWorkspace: React.FC = () => {
         );
         
       case 'campaign_generation':
+        const lineItemsData = campaignData.find(data => data.step === 'campaign_generation');
         return (
           <div className="space-y-6">
             <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
@@ -512,7 +551,7 @@ const AgenticWorkspace: React.FC = () => {
                   <h3 className="text-lg font-semibold text-orange-900">Media Plan</h3>
                   <p className="text-orange-700 text-sm">Executable line items ready for ad server</p>
                 </div>
-                {stepData && (
+                {(lineItemsData || isWorkflowComplete()) && (
                   <div className="ml-auto">
                     <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
                       ✓ Constructed
@@ -521,7 +560,7 @@ const AgenticWorkspace: React.FC = () => {
                 )}
               </div>
               
-              {stepData?.data?.line_items ? (
+              {lineItemsData?.data?.line_items ? (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h4 className="font-medium text-gray-700">Generated Line Items</h4>
@@ -544,7 +583,7 @@ const AgenticWorkspace: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
-                        {stepData.data.line_items.slice(0, 6).map((item: any, index: number) => (
+                        {lineItemsData.data.line_items.slice(0, 6).map((item: any, index: number) => (
                           <tr key={index} className="hover:bg-gray-50">
                             <td className="py-3 px-4 font-medium text-gray-900">{item.name}</td>
                             <td className="py-3 px-4 text-gray-700">{item.content}</td>
@@ -560,9 +599,9 @@ const AgenticWorkspace: React.FC = () => {
                     </table>
                   </div>
                   
-                  {stepData.data.line_items.length > 6 && (
+                  {lineItemsData.data.line_items.length > 6 && (
                     <p className="text-sm text-gray-500 text-center">
-                      Showing 6 of {stepData.data.line_items.length} line items. Download CSV for complete list.
+                      Showing 6 of {lineItemsData.data.line_items.length} line items. Download CSV for complete list.
                     </p>
                   )}
                 </div>
@@ -672,7 +711,7 @@ const AgenticWorkspace: React.FC = () => {
                   </div>
                 )}
                 <span className="text-sm text-gray-500">
-                  {Math.round(agentState.progress / 25)} Step Running
+                  {isWorkflowComplete() ? '✅ Complete' : `${Math.round(agentState.progress / 25)} Step Running`}
                 </span>
               </div>
             </div>
@@ -681,7 +720,7 @@ const AgenticWorkspace: React.FC = () => {
             <div className="grid grid-cols-4 gap-4">
               {steps.map((step, index) => {
                 const status = getStepStatus(step.id);
-                const isCurrentlyProcessing = agentState.current_step === step.id && isAutoAdvancing;
+                const isCurrentlyProcessing = agentState.current_step === step.id && isAutoAdvancing && !isWorkflowComplete();
                 const colors = getStepColors(step.color, isCurrentlyProcessing, status);
                 
                 return (
@@ -695,7 +734,9 @@ const AgenticWorkspace: React.FC = () => {
                     </div>
                     <div className="text-center">
                       <p className={`text-xs font-medium ${colors.text}`}>
-                        {isCurrentlyProcessing ? 'Processing...' : `Step ${index + 1}`}
+                        {isCurrentlyProcessing ? 'Processing...' : 
+                         status === 'completed' ? 'Complete' :
+                         `Step ${index + 1}`}
                       </p>
                       <p className={`text-xs ${
                         status !== 'pending' ? 'text-gray-700' : 'text-gray-400'
