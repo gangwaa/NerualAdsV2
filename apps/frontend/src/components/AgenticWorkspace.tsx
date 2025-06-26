@@ -9,14 +9,7 @@ interface AgentState {
   progress: number;
   last_reasoning: string;
   next_action: string;
-  avatar_state: 'thinking' | 'generating' | 'analyzing' | 'complete';
-}
-
-interface CampaignData {
-  step: string;
-  data: any;
-  confidence: number;
-  timestamp: string;
+  avatar_state: 'idle' | 'thinking' | 'analyzing' | 'generating' | 'complete';
 }
 
 const AgenticWorkspace: React.FC = () => {
@@ -28,205 +21,126 @@ const AgenticWorkspace: React.FC = () => {
     avatar_state: 'thinking'
   });
 
-  const [campaignData, setCampaignData] = useState<CampaignData[]>([]);
+  const [campaignData, setCampaignData] = useState<Array<{step: string, data: any, confidence: number, timestamp: string}>>([]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isAutoAdvancing, setIsAutoAdvancing] = useState(false);
   const [chatMessages, setChatMessages] = useState<Array<{type: 'user' | 'agent', content: string, timestamp: string}>>([]);
 
-  // Auto-advance through steps with delays
-  const autoAdvanceWorkflow = async (initialInput: string) => {
-    setIsAutoAdvancing(true);
+  // Manual step advancement instead of auto-advance
+  const advanceToNextStep = async () => {
+    if (isProcessing) return;
     
-    // Add user message to chat
-    setChatMessages(prev => [...prev, {
-      type: 'user',
-      content: initialInput,
-      timestamp: new Date().toISOString()
-    }]);
+    setIsProcessing(true);
+    setAgentState(prev => ({ ...prev, avatar_state: 'analyzing' }));
     
     try {
-      // Step 1: Campaign Data
-      setAgentState(prev => ({ 
-        ...prev, 
-        current_step: 'campaign_data',
-        progress: 25,
-        avatar_state: 'analyzing'
-      }));
+      // Advance to next step
+      const advanceResponse = await fetch('http://localhost:8000/agent/advance', { method: 'POST' });
       
-      const step1Response = await fetch('http://localhost:8000/agent/process', {
+      // Process the current step
+      const stepResponse = await fetch('http://localhost:8000/agent/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: initialInput, files: [] })
+        body: JSON.stringify({ input: `Continue with ${agentState.current_step} analysis`, files: [] })
       });
-      const step1Result = await step1Response.json();
+      const stepResult = await stepResponse.json();
       
       // Add agent reasoning to chat
       setChatMessages(prev => [...prev, {
         type: 'agent',
-        content: step1Result.reasoning,
+        content: stepResult.reasoning,
         timestamp: new Date().toISOString()
       }]);
       
-      setCampaignData([{
-        step: 'campaign_data',
-        data: step1Result.data,
-        confidence: step1Result.confidence,
-        timestamp: new Date().toISOString()
-      }]);
-      
-      setAgentState(prev => ({ 
-        ...prev, 
-        last_reasoning: step1Result.reasoning,
-        next_action: step1Result.action,
-        avatar_state: 'thinking'
-      }));
-      
-      // Wait 3 seconds before advancing
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // Step 2: Historical Data
-      setAgentState(prev => ({ 
-        ...prev, 
-        current_step: 'advertiser_preferences',
-        progress: 50,
-        avatar_state: 'analyzing'
-      }));
-      
-      await fetch('http://localhost:8000/agent/advance', { method: 'POST' });
-      
-      const step2Response = await fetch('http://localhost:8000/agent/process', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: "Continue with historical analysis", files: [] })
-      });
-      const step2Result = await step2Response.json();
-      
-      // Add agent reasoning to chat
-      setChatMessages(prev => [...prev, {
-        type: 'agent',
-        content: step2Result.reasoning,
-        timestamp: new Date().toISOString()
-      }]);
-      
+      // Update campaign data
       setCampaignData(prev => [...prev, {
-        step: 'advertiser_preferences',
-        data: step2Result.data,
-        confidence: step2Result.confidence,
+        step: stepResult.step,
+        data: stepResult.data,
+        confidence: stepResult.confidence,
         timestamp: new Date().toISOString()
       }]);
       
+      // Update agent state
       setAgentState(prev => ({ 
         ...prev, 
-        last_reasoning: step2Result.reasoning,
-        next_action: step2Result.action,
-        avatar_state: 'thinking'
-      }));
-      
-      // Wait 3 seconds before advancing
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // Step 3: Audience Analysis
-      setAgentState(prev => ({ 
-        ...prev, 
-        current_step: 'audience_generation',
-        progress: 75,
-        avatar_state: 'analyzing'
-      }));
-      
-      await fetch('http://localhost:8000/agent/advance', { method: 'POST' });
-      
-      const step3Response = await fetch('http://localhost:8000/agent/process', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: "Generate ACR audience segments", files: [] })
-      });
-      const step3Result = await step3Response.json();
-      
-      // Add agent reasoning to chat
-      setChatMessages(prev => [...prev, {
-        type: 'agent',
-        content: step3Result.reasoning,
-        timestamp: new Date().toISOString()
-      }]);
-      
-      setCampaignData(prev => [...prev, {
-        step: 'audience_generation',
-        data: step3Result.data,
-        confidence: step3Result.confidence,
-        timestamp: new Date().toISOString()
-      }]);
-      
-      setAgentState(prev => ({ 
-        ...prev, 
-        last_reasoning: step3Result.reasoning,
-        next_action: step3Result.action,
-        avatar_state: 'thinking'
-      }));
-      
-      // Wait 3 seconds before final step
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // Step 4: Line Item Generation
-      setAgentState(prev => ({ 
-        ...prev, 
-        current_step: 'campaign_generation',
-        progress: 100,
-        avatar_state: 'generating'
-      }));
-      
-      await fetch('http://localhost:8000/agent/advance', { method: 'POST' });
-      
-      const step4Response = await fetch('http://localhost:8000/agent/process', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: "Build executable line items", files: [] })
-      });
-      const step4Result = await step4Response.json();
-      
-      // Add agent reasoning to chat
-      setChatMessages(prev => [...prev, {
-        type: 'agent',
-        content: step4Result.reasoning,
-        timestamp: new Date().toISOString()
-      }]);
-      
-      setCampaignData(prev => [...prev, {
-        step: 'campaign_generation',
-        data: step4Result.data,
-        confidence: step4Result.confidence,
-        timestamp: new Date().toISOString()
-      }]);
-      
-      setAgentState(prev => ({ 
-        ...prev, 
-        last_reasoning: step4Result.reasoning,
-        next_action: step4Result.action,
-        avatar_state: 'complete'
+        current_step: stepResult.step,
+        progress: Math.min(prev.progress + 25, 100),
+        last_reasoning: stepResult.reasoning,
+        next_action: stepResult.action,
+        avatar_state: stepResult.step === 'campaign_generation' ? 'complete' : 'thinking'
       }));
       
     } catch (error) {
-      console.error('Auto-advance error:', error);
+      console.error('Step advancement error:', error);
       setChatMessages(prev => [...prev, {
         type: 'agent',
-        content: 'Sorry, I encountered an error processing your request. Please try again.',
+        content: 'Sorry, I encountered an error advancing to the next step. Please try again.',
         timestamp: new Date().toISOString()
       }]);
     } finally {
-      setIsAutoAdvancing(false);
       setIsProcessing(false);
     }
   };
 
   const handleCampaignInput = async (input: string, files?: FileList) => {
     setIsProcessing(true);
-    setAgentState(prev => ({ ...prev, avatar_state: 'analyzing' }));
+    setAgentState(prev => ({ 
+      ...prev, 
+      current_step: 'campaign_data',
+      progress: 25,
+      avatar_state: 'analyzing'
+    }));
+    
+    // Add user message to chat
+    setChatMessages([{
+      type: 'user',
+      content: input,
+      timestamp: new Date().toISOString()
+    }]);
     
     // Reset campaign data for new workflow
     setCampaignData([]);
-    setChatMessages([]);
     
-    // Start auto-advance workflow
-    await autoAdvanceWorkflow(input);
+    try {
+      // Process initial step
+      const response = await fetch('http://localhost:8000/agent/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input, files: files ? Array.from(files) : [] })
+      });
+      const result = await response.json();
+      
+      // Add agent reasoning to chat
+      setChatMessages(prev => [...prev, {
+        type: 'agent',
+        content: result.reasoning,
+        timestamp: new Date().toISOString()
+      }]);
+      
+      // Add parsed data
+      setCampaignData([{
+        step: result.step,
+        data: result.data,
+        confidence: result.confidence,
+        timestamp: new Date().toISOString()
+      }]);
+      
+      setAgentState(prev => ({ 
+        ...prev, 
+        last_reasoning: result.reasoning,
+        next_action: result.action,
+        avatar_state: 'thinking'
+      }));
+      
+    } catch (error) {
+      console.error('Campaign processing error:', error);
+      setChatMessages(prev => [...prev, {
+        type: 'agent',
+        content: 'Sorry, I encountered an error processing your request. Please try again.',
+        timestamp: new Date().toISOString()
+      }]);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const steps = [
@@ -235,25 +149,6 @@ const AgenticWorkspace: React.FC = () => {
     { id: 'audience_generation', title: 'Audience Analysis', icon: '🎯', color: 'green' },
     { id: 'campaign_generation', title: 'Media Plan', icon: '⚡', color: 'orange' }
   ];
-
-  const getStepStatus = (stepId: string) => {
-    // If we're in complete state or have 100% progress, mark all previous steps as completed
-    if (agentState.avatar_state === 'complete' || agentState.progress >= 100) {
-      const stepIndex = steps.findIndex(s => s.id === stepId);
-      const currentIndex = steps.findIndex(s => s.id === agentState.current_step);
-      if (stepIndex <= currentIndex) return 'completed';
-    }
-    
-    if (agentState.current_step === stepId) {
-      // If agent is complete and this is the current step, mark as completed
-      if (agentState.avatar_state === 'complete') return 'completed';
-      return 'active';
-    }
-    
-    const stepIndex = steps.findIndex(s => s.id === stepId);
-    const currentIndex = steps.findIndex(s => s.id === agentState.current_step);
-    return stepIndex < currentIndex ? 'completed' : 'pending';
-  };
 
   const getCurrentStepData = () => {
     return campaignData.find(data => data.step === agentState.current_step);
@@ -268,366 +163,248 @@ const AgenticWorkspace: React.FC = () => {
     return stepHasData || isWorkflowComplete();
   };
 
-  const getStepColors = (color: string, isProcessing: boolean, status: string) => {
-    const colorMap = {
-      blue: {
-        bg: isProcessing ? 'bg-blue-500 ring-2 ring-blue-300' : 
-            status === 'active' ? 'bg-blue-500' : 
-            status === 'completed' ? 'bg-blue-500' : 'bg-gray-200',
-        text: isProcessing ? 'text-blue-600 animate-pulse' :
-              status === 'active' ? 'text-blue-600' :
-              status === 'completed' ? 'text-green-600' : 'text-gray-400'
-      },
-      purple: {
-        bg: isProcessing ? 'bg-purple-500 ring-2 ring-purple-300' : 
-            status === 'active' ? 'bg-purple-500' : 
-            status === 'completed' ? 'bg-purple-500' : 'bg-gray-200',
-        text: isProcessing ? 'text-purple-600 animate-pulse' :
-              status === 'active' ? 'text-blue-600' :
-              status === 'completed' ? 'text-green-600' : 'text-gray-400'
-      },
-      green: {
-        bg: isProcessing ? 'bg-green-500 ring-2 ring-green-300' : 
-            status === 'active' ? 'bg-green-500' : 
-            status === 'completed' ? 'bg-green-500' : 'bg-gray-200',
-        text: isProcessing ? 'text-green-600 animate-pulse' :
-              status === 'active' ? 'text-blue-600' :
-              status === 'completed' ? 'text-green-600' : 'text-gray-400'
-      },
-      orange: {
-        bg: isProcessing ? 'bg-orange-500 ring-2 ring-orange-300' : 
-            status === 'active' ? 'bg-orange-500' : 
-            status === 'completed' ? 'bg-orange-500' : 'bg-gray-200',
-        text: isProcessing ? 'text-orange-600 animate-pulse' :
-              status === 'active' ? 'text-blue-600' :
-              status === 'completed' ? 'text-green-600' : 'text-gray-400'
-      }
-    };
-    return colorMap[color] || colorMap.blue;
-  };
-
   const renderStepContent = () => {
-    // Show content for the current step, or if workflow is complete, show the most advanced step with data
-    let stepToDisplay = agentState.current_step;
-    let stepData = campaignData.find(data => data.step === stepToDisplay);
+    const currentStepData = campaignData.find(data => data.step === agentState.current_step);
     
-    // If workflow is complete, find the highest step with data to display
-    if (isWorkflowComplete()) {
-      const stepsWithData = steps.reverse().find(step => 
-        campaignData.some(data => data.step === step.id)
-      );
-      if (stepsWithData) {
-        stepToDisplay = stepsWithData.id;
-        stepData = campaignData.find(data => data.step === stepToDisplay);
-      }
-      steps.reverse(); // restore original order
-    }
-    
-    switch (stepToDisplay) {
+    switch (agentState.current_step) {
       case 'campaign_data':
-        const campaignStepData = campaignData.find(data => data.step === 'campaign_data');
+        if (campaignData.length === 0) {
+          return (
+            <div className="text-center py-12">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Campaign Data Analysis</h3>
+              <p className="text-gray-500 mb-6">Start by entering your campaign requirements in the chat.</p>
+            </div>
+          );
+        }
+        
         return (
-          <div className="space-y-6">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-                  <span className="text-white text-lg">📊</span>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-blue-900">Campaign Parameters</h3>
-                  <p className="text-blue-700 text-sm">Define campaign basics</p>
-                </div>
-                {(campaignStepData || isWorkflowComplete()) && (
-                  <div className="ml-auto">
-                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
-                      ✓ Identified
-                    </span>
-                  </div>
-                )}
-              </div>
-              
-              {campaignStepData?.data ? (
-                <div className="grid grid-cols-2 gap-4">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">Campaign Parameters Identified</h3>
+            {currentStepData?.data && (
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Advertiser</label>
-                    <input 
-                      type="text" 
-                      value={campaignStepData.data.advertiser || ''} 
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
-                      readOnly
-                    />
+                    <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
+                      {currentStepData.data.advertiser || 'Not specified'}
+                    </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Budget</label>
-                    <input 
-                      type="text" 
-                      value={campaignStepData.data.budget ? `$${campaignStepData.data.budget?.toLocaleString()}` : ''} 
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
-                      readOnly
-                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Campaign Budget</label>
+                    <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
+                      {currentStepData.data.budget ? `$${currentStepData.data.budget.toLocaleString()}` : 'Not specified'}
+                    </div>
                   </div>
+                </div>
+                <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Objective</label>
-                    <input 
-                      type="text" 
-                      value={campaignStepData.data.objective || ''} 
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
-                      readOnly
-                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Campaign Objective</label>
+                    <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
+                      {currentStepData.data.objective || 'Not specified'}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Timeline</label>
-                    <input 
-                      type="text" 
-                      value={campaignStepData.data.timeline || ''} 
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
-                      readOnly
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center py-8 text-gray-500">
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                      <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                    <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
+                      {currentStepData.data.timeline || 'Not specified'}
                     </div>
-                    <p className="text-sm">Parsing campaign parameters...</p>
                   </div>
                 </div>
-              )}
+              </div>
+            )}
+            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+              <div className="flex items-center">
+                <div className="text-blue-600 mr-3">✓</div>
+                <div>
+                  <p className="text-sm font-medium text-blue-900">Campaign parameters successfully parsed</p>
+                  <p className="text-sm text-blue-700">Confidence: {currentStepData?.confidence}%</p>
+                </div>
+              </div>
             </div>
           </div>
         );
-        
+
       case 'advertiser_preferences':
-        const preferencesData = campaignData.find(data => data.step === 'advertiser_preferences');
+        if (!currentStepData) {
+          return (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Analyzing Historical Data</h3>
+              <p className="text-gray-500">Retrieving advertiser buying patterns and preferences...</p>
+            </div>
+          );
+        }
+        
         return (
-          <div className="space-y-6">
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
-                  <span className="text-white text-lg">📈</span>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-purple-900">Historical Data</h3>
-                  <p className="text-purple-700 text-sm">Advertiser behavioral insights</p>
-                </div>
-                {(preferencesData || isWorkflowComplete()) && (
-                  <div className="ml-auto">
-                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
-                      ✓ Retrieved
-                    </span>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">Historical Patterns Retrieved</h3>
+            {currentStepData.data && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-purple-50 p-4 rounded-lg">
+                    <h4 className="font-medium text-purple-900 mb-2">Preferred Targeting</h4>
+                    <ul className="text-sm text-purple-800 space-y-1">
+                      {currentStepData.data.preferred_targeting?.map((item: string, index: number) => (
+                        <li key={index}>• {item}</li>
+                      )) || <li>No data available</li>}
+                    </ul>
                   </div>
-                )}
+                  <div className="bg-purple-50 p-4 rounded-lg">
+                    <h4 className="font-medium text-purple-900 mb-2">Average CPM Range</h4>
+                    <div className="text-lg font-semibold text-purple-900">
+                      ${currentStepData.data.cpm_range?.min || 0} - ${currentStepData.data.cpm_range?.max || 0}
+                    </div>
+                  </div>
+                  <div className="bg-purple-50 p-4 rounded-lg">
+                    <h4 className="font-medium text-purple-900 mb-2">Historical Performance</h4>
+                    <div className="text-sm text-purple-800">
+                      <div>CTR: {currentStepData.data.performance?.ctr || 'N/A'}%</div>
+                      <div>VTR: {currentStepData.data.performance?.vtr || 'N/A'}%</div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              
-              {preferencesData?.data ? (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <h4 className="font-medium text-gray-700 mb-2">Content Preferences</h4>
-                      <div className="space-y-1">
-                        {preferencesData.data.content_preferences?.map((pref: string, index: number) => (
-                          <span key={index} className="inline-block px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs mr-1">
-                            {pref}
-                          </span>
-                        )) || <span className="text-gray-500 text-sm">Analyzing...</span>}
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-gray-700 mb-2">Geographic Focus</h4>
-                      <div className="space-y-1">
-                        {preferencesData.data.geo_preferences?.map((geo: string, index: number) => (
-                          <span key={index} className="inline-block px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs mr-1">
-                            {geo}
-                          </span>
-                        )) || <span className="text-gray-500 text-sm">Analyzing...</span>}
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-gray-700 mb-2">Device Targeting</h4>
-                      <div className="space-y-1">
-                        {preferencesData.data.device_preferences?.map((device: string, index: number) => (
-                          <span key={index} className="inline-block px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs mr-1">
-                            {device}
-                          </span>
-                        )) || <span className="text-gray-500 text-sm">Analyzing...</span>}
-                      </div>
-                    </div>
-                  </div>
+            )}
+            <div className="mt-6 p-4 bg-purple-50 rounded-lg">
+              <div className="flex items-center">
+                <div className="text-purple-600 mr-3">✓</div>
+                <div>
+                  <p className="text-sm font-medium text-purple-900">Historical patterns successfully analyzed</p>
+                  <p className="text-sm text-purple-700">Confidence: {currentStepData?.confidence}%</p>
                 </div>
-              ) : (
-                <div className="flex items-center justify-center py-8 text-gray-500">
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                      <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-                    </div>
-                    <p className="text-sm">Analyzing historical data...</p>
-                  </div>
-                </div>
-              )}
+              </div>
             </div>
           </div>
         );
-        
+
       case 'audience_generation':
-        const audienceData = campaignData.find(data => data.step === 'audience_generation');
+        if (!currentStepData) {
+          return (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Generating ACR Segments</h3>
+              <p className="text-gray-500">Building audience definitions with pricing insights...</p>
+            </div>
+          );
+        }
+        
         return (
-          <div className="space-y-6">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
-                  <span className="text-white text-lg">🎯</span>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-green-900">Audience Analysis</h3>
-                  <p className="text-green-700 text-sm">ACR segments & pricing insights</p>
-                </div>
-                {(audienceData || isWorkflowComplete()) && (
-                  <div className="ml-auto">
-                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
-                      ✓ Synthesized
-                    </span>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">Audience Definition Synthesized</h3>
+            {currentStepData.data?.segments && (
+              <div className="space-y-4">
+                {currentStepData.data.segments.map((segment: any, index: number) => (
+                  <div key={index} className="border border-green-200 rounded-lg p-4 bg-green-50">
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="font-medium text-green-900">{segment.name}</h4>
+                      <div className="text-sm text-green-700">
+                        Scale: {segment.scale?.toLocaleString() || 'N/A'} HH
+                      </div>
+                    </div>
+                    <p className="text-sm text-green-800 mb-2">{segment.description}</p>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-green-700">CPM: ${segment.cpm || 'N/A'}</span>
+                      <span className="text-green-700">Est. Reach: {segment.reach || 'N/A'}%</span>
+                    </div>
                   </div>
-                )}
+                ))}
               </div>
-              
-              {audienceData?.data ? (
-                <div className="space-y-4">
-                  {audienceData.data.acr_segments && (
-                    <div>
-                      <h4 className="font-medium text-gray-700 mb-3">ACR Audience Segments</h4>
-                      <div className="grid grid-cols-2 gap-3">
-                        {audienceData.data.acr_segments.map((segment: string, index: number) => (
-                          <div key={index} className="flex items-center space-x-2 p-3 bg-white border border-green-200 rounded-lg">
-                            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                              <span className="text-green-600 text-sm">👥</span>
-                            </div>
-                            <span className="text-sm font-medium text-gray-700">{segment}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {audienceData.data.cpm_floors && (
-                    <div>
-                      <h4 className="font-medium text-gray-700 mb-3">CPM Floor Pricing</h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        {Object.entries(audienceData.data.cpm_floors).map(([device, cpm]) => (
-                          <div key={device} className="bg-white p-3 border border-green-200 rounded-lg">
-                            <div className="text-sm font-medium text-gray-700">{device}</div>
-                            <div className="text-lg font-bold text-green-600">${cpm} CPM</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+            )}
+            <div className="mt-6 p-4 bg-green-50 rounded-lg">
+              <div className="flex items-center">
+                <div className="text-green-600 mr-3">✓</div>
+                <div>
+                  <p className="text-sm font-medium text-green-900">Pricing insights gathered</p>
+                  <p className="text-sm text-green-700">Confidence: {currentStepData?.confidence}%</p>
                 </div>
-              ) : (
-                <div className="flex items-center justify-center py-8 text-gray-500">
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                      <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin"></div>
-                    </div>
-                    <p className="text-sm">Generating audience segments...</p>
-                  </div>
-                </div>
-              )}
+              </div>
             </div>
           </div>
         );
-        
+
       case 'campaign_generation':
-        const lineItemsData = campaignData.find(data => data.step === 'campaign_generation');
+        if (!currentStepData) {
+          return (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-4"></div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Building Line Items</h3>
+              <p className="text-gray-500">Constructing executable campaign structure...</p>
+            </div>
+          );
+        }
+        
         return (
-          <div className="space-y-6">
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
-                  <span className="text-white text-lg">⚡</span>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-orange-900">Media Plan</h3>
-                  <p className="text-orange-700 text-sm">Executable line items ready for ad server</p>
-                </div>
-                {(lineItemsData || isWorkflowComplete()) && (
-                  <div className="ml-auto">
-                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
-                      ✓ Constructed
-                    </span>
-                  </div>
-                )}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">Line Items Successfully Constructed</h3>
+            {currentStepData.data?.line_items && (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Line Item Name
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Budget
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        CPM
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Audience
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {currentStepData.data.line_items.map((item: any, index: number) => (
+                      <tr key={index}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {item.name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          ${item.budget?.toLocaleString() || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          ${item.cpm || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {item.audience}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="inline-flex px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                            Ready
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-              
-              {lineItemsData?.data?.line_items ? (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium text-gray-700">Generated Line Items</h4>
-                    <button className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm">
-                      📥 Download CSV
-                    </button>
-                  </div>
-                  <div className="overflow-x-auto bg-white rounded-lg border border-orange-200">
-                    <table className="min-w-full text-sm">
-                      <thead className="bg-orange-100">
-                        <tr>
-                          <th className="text-left py-3 px-4 font-medium text-orange-900">Name</th>
-                          <th className="text-left py-3 px-4 font-medium text-orange-900">Content</th>
-                          <th className="text-left py-3 px-4 font-medium text-orange-900">Geography</th>
-                          <th className="text-left py-3 px-4 font-medium text-orange-900">Device</th>
-                          <th className="text-left py-3 px-4 font-medium text-orange-900">Audience</th>
-                          <th className="text-left py-3 px-4 font-medium text-orange-900">Bid CPM</th>
-                          <th className="text-left py-3 px-4 font-medium text-orange-900">Daily Cap</th>
-                          <th className="text-left py-3 px-4 font-medium text-orange-900">Freq Cap</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {lineItemsData.data.line_items.slice(0, 6).map((item: any, index: number) => (
-                          <tr key={index} className="hover:bg-gray-50">
-                            <td className="py-3 px-4 font-medium text-gray-900">{item.name}</td>
-                            <td className="py-3 px-4 text-gray-700">{item.content}</td>
-                            <td className="py-3 px-4 text-gray-700">{item.geo}</td>
-                            <td className="py-3 px-4 text-gray-700">{item.device}</td>
-                            <td className="py-3 px-4 text-gray-700">{item.audience}</td>
-                            <td className="py-3 px-4 text-gray-700 font-medium">{item.bid_cpm}</td>
-                            <td className="py-3 px-4 text-gray-700">{item.daily_cap}</td>
-                            <td className="py-3 px-4 text-gray-700">{item.frequency_cap}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  
-                  {lineItemsData.data.line_items.length > 6 && (
-                    <p className="text-sm text-gray-500 text-center">
-                      Showing 6 of {lineItemsData.data.line_items.length} line items. Download CSV for complete list.
-                    </p>
-                  )}
+            )}
+            <div className="mt-6 p-4 bg-orange-50 rounded-lg">
+              <div className="flex items-center">
+                <div className="text-orange-600 mr-3">✓</div>
+                <div>
+                  <p className="text-sm font-medium text-orange-900">Campaign structure ready for deployment</p>
+                  <p className="text-sm text-orange-700">Confidence: {currentStepData?.confidence}%</p>
                 </div>
-              ) : (
-                <div className="flex items-center justify-center py-8 text-gray-500">
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                      <div className="w-6 h-6 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-                    </div>
-                    <p className="text-sm">Building line items...</p>
-                  </div>
-                </div>
-              )}
+              </div>
             </div>
           </div>
         );
-        
+
       default:
         return (
-          <div className="flex items-center justify-center py-12 text-gray-500">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">⚡</span>
-              </div>
-              <p className="text-lg font-medium mb-2">Neural is ready to help</p>
-              <p className="text-sm">Start a conversation to begin your campaign planning</p>
+          <div className="text-center py-12">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Neural Ad Planning Assistant</h3>
+            <p className="text-gray-500 mb-6">I'll help you create targeted CTV campaigns with data-driven insights.</p>
+            <div className="bg-blue-50 rounded-lg p-4 max-w-md mx-auto">
+              <p className="text-sm text-blue-800">
+                Start by describing your campaign requirements in the chat panel.
+              </p>
             </div>
           </div>
         );
@@ -689,7 +466,7 @@ const AgenticWorkspace: React.FC = () => {
           <div className="flex-1">
             <ChatInterface 
               onCampaignInput={handleCampaignInput}
-              isProcessing={isProcessing || isAutoAdvancing}
+              isProcessing={isProcessing}
               agentState={agentState}
               chatMessages={chatMessages}
             />
@@ -700,61 +477,85 @@ const AgenticWorkspace: React.FC = () => {
         <div className="flex-1 flex flex-col">
           
           {/* Top Right - Progress Tracker */}
-          <div className="h-32 bg-white border-b border-gray-200 px-6 py-4">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-lg font-semibold text-gray-900">Ad Planning Progress</h2>
-              <div className="flex items-center space-x-2">
-                {isAutoAdvancing && (
-                  <div className="flex items-center space-x-1 text-blue-600">
-                    <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
-                    <span className="text-sm">Auto-advancing...</span>
-                  </div>
-                )}
-                <span className="text-sm text-gray-500">
-                  {isWorkflowComplete() ? '✅ Complete' : `${Math.round(agentState.progress / 25)} Step Running`}
-                </span>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Campaign Progress</h3>
+              <div className="text-sm text-gray-500">
+                {agentState.progress}% Complete
               </div>
             </div>
             
-            {/* 4-Step Progress Bar */}
-            <div className="grid grid-cols-4 gap-4">
-              {steps.map((step, index) => {
-                const status = getStepStatus(step.id);
-                const isCurrentlyProcessing = agentState.current_step === step.id && isAutoAdvancing && !isWorkflowComplete();
-                const colors = getStepColors(step.color, isCurrentlyProcessing, status);
-                
-                return (
-                  <div key={step.id} className="flex flex-col items-center space-y-1">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg transition-all duration-500 ${
-                      status === 'pending' ? 'text-gray-400' : 'text-white'
-                    } ${colors.bg}`}>
-                      {isCurrentlyProcessing ? '⏳' :
-                       status === 'completed' ? '✓' : 
-                       status === 'active' ? step.icon : step.icon}
+            <div className="flex items-center justify-between mb-6">
+              {steps.map((step, index) => (
+                <div key={step.id} className="flex items-center">
+                  <div className={`
+                    w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium border-2 transition-all duration-200
+                    ${agentState.current_step === step.id ? 
+                      `${step.color} border-current text-white` : 
+                      isWorkflowComplete() ? 'bg-green-100 border-green-500 text-green-700' :
+                      index < steps.findIndex(s => s.id === agentState.current_step) ?
+                      'bg-green-100 border-green-500 text-green-700' :
+                      'bg-gray-100 border-gray-300 text-gray-500'
+                    }
+                  `}>
+                    {isWorkflowComplete() || index < steps.findIndex(s => s.id === agentState.current_step) ? 
+                      '✓' : index + 1
+                    }
+                  </div>
+                  <div className="ml-2 text-sm">
+                    <div className={`font-medium ${
+                      agentState.current_step === step.id ? 'text-gray-900' : 'text-gray-600'
+                    }`}>
+                      {step.title}
                     </div>
-                    <div className="text-center">
-                      <p className={`text-xs font-medium ${colors.text}`}>
-                        {isCurrentlyProcessing ? 'Processing...' : 
-                         status === 'completed' ? 'Complete' :
-                         `Step ${index + 1}`}
-                      </p>
-                      <p className={`text-xs ${
-                        status !== 'pending' ? 'text-gray-700' : 'text-gray-400'
-                      }`}>
-                        {step.title}
-                      </p>
+                    <div className="text-gray-500 text-xs">
+                      {agentState.current_step === step.id && !isWorkflowComplete() ? 
+                        'Current Step' : 
+                        isWorkflowComplete() ? '✅ Complete' :
+                        index < steps.findIndex(s => s.id === agentState.current_step) ? 
+                        'Complete' : 'Pending'
+                      }
                     </div>
                   </div>
-                );
-              })}
+                  {index < steps.length - 1 && (
+                    <div className={`mx-4 h-0.5 w-8 ${
+                      index < steps.findIndex(s => s.id === agentState.current_step) ? 
+                      'bg-green-500' : 'bg-gray-200'
+                    }`} />
+                  )}
+                </div>
+              ))}
             </div>
+
+            {/* Next Step Button */}
+            {!isWorkflowComplete() && campaignData.length > 0 && (
+              <div className="flex justify-center">
+                <button
+                  onClick={advanceToNextStep}
+                  disabled={isProcessing}
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors duration-200"
+                >
+                  {isProcessing ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      Next Step
+                      <svg className="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Main Content Area */}
-          <div className="flex-1 bg-gray-50 overflow-auto">
-            <div className="p-6">
-              {renderStepContent()}
-            </div>
+          {/* Main Content - Dynamic based on current step */}
+          <div className="flex-1 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            {renderStepContent()}
           </div>
         </div>
       </div>

@@ -7,7 +7,7 @@ from audience.module import list_segments
 from planner.module import build_plan
 from exporter.module import export_csv
 from models.campaign import CampaignSpec, CampaignPlan
-from agents.cot_agent import COTReasoningAgent
+from agents.multi_agent_orchestrator import MultiAgentOrchestrator
 from pydantic import BaseModel
 import os
 
@@ -23,8 +23,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize COT Agent
-cot_agent = COTReasoningAgent()
+# Initialize Multi-Agent Orchestrator
+orchestrator = MultiAgentOrchestrator()
 
 # Mount static files for exports
 exports_dir = os.path.join(os.path.dirname(__file__), "data", "exports")
@@ -37,25 +37,27 @@ class AgentRequest(BaseModel):
 
 @app.get("/")
 async def root():
-    return {"message": "CTV Campaign Management API", "status": "running"}
+    return {"message": "Neural CTV Campaign Management API", "status": "running", "system": "multi-agent"}
 
 @app.post("/agent/process")
 async def process_agent_request(request: AgentRequest):
-    """Process campaign request through COT Agent"""
+    """Process campaign request through Multi-Agent Orchestrator"""
     try:
-        # Process through COT agent
-        thought = await cot_agent.process_campaign_request(request.input, request.files)
+        # Process through orchestrator
+        result = await orchestrator.process_step(request.input)
         
         # Get current status
-        status = cot_agent.get_current_status()
+        status = orchestrator.get_current_status()
         
         return {
-            "step": thought.step.value,
-            "reasoning": thought.reasoning,
-            "action": thought.action,
-            "data": thought.data,
-            "confidence": thought.confidence,
+            "step": result.step.value,
+            "reasoning": result.reasoning,
+            "action": result.action,
+            "data": result.data,
+            "confidence": result.confidence,
             "progress": status["progress"],
+            "current_step": status["current_step"],
+            "avatar_state": status["avatar_state"],
             "status": "success"
         }
     except Exception as e:
@@ -63,25 +65,38 @@ async def process_agent_request(request: AgentRequest):
 
 @app.get("/agent/status")
 async def get_agent_status():
-    """Get current agent status"""
+    """Get current multi-agent orchestrator status"""
     try:
-        status = cot_agent.get_current_status()
+        status = orchestrator.get_current_status()
         return status
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Status error: {str(e)}")
 
 @app.post("/agent/advance")
 async def advance_agent_step():
-    """Advance agent to next step"""
+    """Advance orchestrator to next step"""
     try:
-        next_step = await cot_agent.advance_to_next_step()
-        status = cot_agent.get_current_status()
+        next_step = orchestrator.advance_step()
+        status = orchestrator.get_current_status()
         return {
             "current_step": next_step.value,
             "status": status
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Advance error: {str(e)}")
+
+@app.post("/agent/reset")
+async def reset_workflow():
+    """Reset workflow to initial state"""
+    try:
+        orchestrator.reset_workflow()
+        status = orchestrator.get_current_status()
+        return {
+            "message": "Workflow reset successfully",
+            "status": status
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Reset error: {str(e)}")
 
 @app.post("/parse", response_model=CampaignSpec)
 async def parse_endpoint(file: UploadFile = File(...)):
@@ -133,7 +148,7 @@ async def plan_endpoint(spec: CampaignSpec):
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "healthy", "service": "backend"}
+    return {"status": "healthy", "service": "neural-backend", "system": "multi-agent"}
 
 if __name__ == "__main__":
     import uvicorn
