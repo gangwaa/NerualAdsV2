@@ -1,135 +1,286 @@
-# Turborepo starter
+# CTV Campaign Management System
 
-This Turborepo starter is maintained by the Turborepo core team.
+A comprehensive Connected TV advertising system built with Turborepo, featuring an AI-powered campaign management interface with FastAPI backend and React frontend.
 
-## Using this example
+## 🎯 System Overview
 
-Run the following command:
+This system is designed to help streaming services run targeted campaigns directly in the ad server. The system learns from log files and generates campaigns optimized for programmatic buying.
 
-```sh
-npx create-turbo@latest
-```
+### Key Components
 
-## What's inside?
+1. **Encoder**: Learns advertising preferences from log data
+2. **UI/UX**: React-based co-pilot interface for campaign building  
+3. **COT Reasoning Agent**: Performs all campaign planning steps
+4. **Multi-agent Backend**: Communicates with users and handles campaign setup
 
-This Turborepo includes the following packages/apps:
-
-### Apps and Packages
-
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
-
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
+## 🏗️ Architecture
 
 ```
-cd my-turborepo
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build
-yarn dlx turbo build
-pnpm exec turbo build
+ctv-mvp/
+├── apps/
+│   ├── backend/           # FastAPI Python service
+│   │   ├── main.py        # API entry point
+│   │   ├── models/        # Pydantic data models
+│   │   ├── parser/        # Campaign brief parsing
+│   │   ├── prefs/         # Advertiser preferences
+│   │   ├── audience/      # Audience segments
+│   │   ├── planner/       # Campaign planning logic
+│   │   ├── exporter/      # CSV export functionality
+│   │   └── data/          # Mock data and exports
+│   └── frontend/          # React TypeScript app
+│       ├── src/
+│       │   ├── components/    # React components
+│       │   ├── api.ts        # API client
+│       │   └── App.tsx       # Main application
+│       └── package.json
+├── packages/              # Shared packages
+├── turbo.json            # Turborepo configuration
+└── package.json          # Root configuration
 ```
 
-You can build a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
+## 🚀 Getting Started
 
+### Prerequisites
+
+- Node.js >= 18
+- Python 3.8+
+- npm
+
+### Installation & Setup
+
+1. **Clone and navigate to the project:**
+   ```bash
+   cd ctv-mvp
+   ```
+
+2. **Install root dependencies:**
+   ```bash
+   # Note: If you encounter npm cache issues, run:
+   # sudo chown -R $(whoami) ~/.npm
+   npm install
+   ```
+
+3. **Set up the backend:**
+   ```bash
+   cd apps/backend
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install fastapi uvicorn pydantic aiofiles openai
+   ```
+
+4. **Install frontend dependencies:**
+   ```bash
+   cd apps/frontend
+   npm install
+   ```
+
+### Running the Application
+
+#### Option 1: Full System (Recommended)
+From the root directory:
+```bash
+npm run dev
 ```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build --filter=docs
+This runs both frontend and backend in parallel.
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build --filter=docs
-yarn exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
+#### Option 2: Individual Services
 
-### Develop
-
-To develop all apps and packages, run the following command:
-
-```
-cd my-turborepo
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev
-yarn exec turbo dev
-pnpm exec turbo dev
-```
-
-You can develop a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
-
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev --filter=web
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev --filter=web
-yarn exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-```
-cd my-turborepo
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo login
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo login
-yarn exec turbo login
-pnpm exec turbo login
+**Backend only:**
+```bash
+cd apps/backend
+npm run dev:backend
+# or directly: source .venv/bin/activate && uvicorn main:app --reload --host 0.0.0.0
 ```
 
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo link
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo link
-yarn exec turbo link
-pnpm exec turbo link
+**Frontend only:**
+```bash
+cd apps/frontend
+npm run dev:frontend
 ```
 
-## Useful Links
+### Access Points
 
-Learn more about the power of Turborepo:
+- **Frontend**: http://localhost:5173
+- **Backend API**: http://localhost:8000
+- **API Docs**: http://localhost:8000/docs
 
-- [Tasks](https://turborepo.com/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.com/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.com/docs/reference/configuration)
-- [CLI Usage](https://turborepo.com/docs/reference/command-line-reference)
+## 🎮 How to Use
+
+### 1. Campaign Specification
+- Upload a campaign brief file (TXT, DOC, PDF) or paste text directly
+- The AI parser extracts campaign details (name, budget, dates, objectives)
+- Review and edit the parsed information
+
+### 2. Advertiser Preferences  
+- Select targeting preferences:
+  - **Networks**: Hulu, Roku, Tubi
+  - **Genres**: Sports, Comedy, Drama
+  - **Devices**: SmartTV, Mobile
+  - **Locations**: Los Angeles, New York, Chicago
+
+### 3. Audience Segments
+- Choose from available audience segments
+- View segment size, geography, and demographic tags
+- See total reach calculation
+
+### 4. Campaign Plan Generation
+- AI generates optimized line items
+- Review budget allocation across networks and segments
+- Download detailed CSV export for ad server import
+
+## 📊 API Endpoints
+
+### Core Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/parse` | POST | Parse campaign brief from file |
+| `/preferences/{adv_id}` | GET | Get advertiser preferences |
+| `/segments` | GET | List available audience segments |
+| `/plan` | POST | Generate campaign plan |
+| `/health` | GET | Health check |
+
+### Sample API Usage
+
+```bash
+# Health check
+curl http://localhost:8000/health
+
+# Get segments
+curl http://localhost:8000/segments
+
+# Get preferences
+curl http://localhost:8000/preferences/default
+```
+
+## 🧩 Key Features
+
+### Frontend (React + TypeScript)
+- **Modern UI**: Built with Tailwind CSS for responsive design
+- **Chat Interface**: AI assistant with conversation history
+- **Chain of Thought**: Visual process indicator
+- **File Upload**: Drag-and-drop campaign brief parsing
+- **Interactive Forms**: Dynamic preference selection
+- **Data Tables**: Sortable segment and line item views
+- **CSV Export**: One-click campaign plan download
+
+### Backend (FastAPI + Python)
+- **RESTful API**: OpenAPI/Swagger documentation
+- **File Processing**: Multi-format campaign brief parsing
+- **Data Models**: Pydantic validation and serialization
+- **Mock Data**: Sample preferences and segments
+- **CSV Generation**: Automated export functionality
+- **CORS Support**: Cross-origin requests enabled
+
+### Development Experience
+- **Turborepo**: Monorepo with optimized builds
+- **Hot Reload**: Both frontend and backend support
+- **TypeScript**: Full type safety across the stack
+- **Modular Architecture**: Easily extensible components
+
+## 🔧 Configuration
+
+### Backend Configuration
+- **API Base URL**: Configurable in `frontend/src/api.ts`
+- **Data Sources**: Mock data in `backend/data/`
+- **Export Location**: `backend/data/exports/`
+
+### Frontend Configuration
+- **Proxy Settings**: Vite proxy in `frontend/vite.config.ts`
+- **Tailwind**: Custom theme in `frontend/tailwind.config.js`
+
+## 📁 Data Models
+
+### CampaignSpec
+```typescript
+{
+  name: string;
+  total_budget: number;
+  start_date: string;
+  end_date: string;
+  objective: string;
+  description?: string;
+}
+```
+
+### LineItem
+```typescript
+{
+  id: string;
+  name: string;
+  budget: number;
+  networks: string[];
+  genres: string[];
+  devices: string[];
+  locations: string[];
+  segment_ids: number[];
+}
+```
+
+## 🚦 Development Roadmap
+
+### Phase 1: ✅ MVP Complete
+- [x] Turborepo setup
+- [x] Backend API with FastAPI
+- [x] Frontend with React + TypeScript
+- [x] Basic campaign workflow
+- [x] Mock data integration
+
+### Phase 2: 🔄 Enhanced Features
+- [ ] OpenAI integration for campaign parsing
+- [ ] Real database integration
+- [ ] Advanced campaign optimization
+- [ ] User authentication
+- [ ] Campaign analytics
+
+### Phase 3: 🔮 Advanced Capabilities
+- [ ] Multi-tenant support
+- [ ] Real-time bidding integration
+- [ ] Machine learning recommendations
+- [ ] A/B testing framework
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+1. **npm permission errors:**
+   ```bash
+   sudo chown -R $(whoami) ~/.npm
+   npm cache clean --force
+   ```
+
+2. **Python virtual environment:**
+   ```bash
+   cd apps/backend
+   rm -rf .venv
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt  # if available
+   ```
+
+3. **Port conflicts:**
+   - Frontend: Change port in `frontend/vite.config.ts`
+   - Backend: Change port in `backend/main.py`
+
+### Development Tips
+- Use `npm run build` to build all packages
+- Use `npm run lint` to check code quality
+- Backend logs available at http://localhost:8000/docs
+
+## 🤝 Contributing
+
+This is a proof-of-concept system. For production use:
+
+1. Replace mock data with real databases
+2. Implement proper authentication
+3. Add comprehensive error handling
+4. Set up monitoring and logging
+5. Configure production deployment
+
+## 📄 License
+
+This project is for demonstration purposes. Modify as needed for your use case.
+
+---
+
+**Built with ❤️ using Turborepo, FastAPI, and React**
