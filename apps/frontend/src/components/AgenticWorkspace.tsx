@@ -30,41 +30,161 @@ const AgenticWorkspace: React.FC = () => {
 
   const [campaignData, setCampaignData] = useState<CampaignData[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isAutoAdvancing, setIsAutoAdvancing] = useState(false);
+
+  // Auto-advance through steps with delays
+  const autoAdvanceWorkflow = async (initialInput: string) => {
+    setIsAutoAdvancing(true);
+    
+    try {
+      // Step 1: Campaign Data
+      setAgentState(prev => ({ 
+        ...prev, 
+        current_step: 'campaign_data',
+        progress: 25,
+        avatar_state: 'analyzing'
+      }));
+      
+      const step1Response = await fetch('http://localhost:8000/agent/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: initialInput, files: [] })
+      });
+      const step1Result = await step1Response.json();
+      
+      setCampaignData([{
+        step: 'campaign_data',
+        data: step1Result.data,
+        confidence: step1Result.confidence,
+        timestamp: new Date().toISOString()
+      }]);
+      
+      setAgentState(prev => ({ 
+        ...prev, 
+        last_reasoning: step1Result.reasoning,
+        next_action: step1Result.action,
+        avatar_state: 'thinking'
+      }));
+      
+      // Wait 3 seconds before advancing
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Step 2: Historical Data
+      setAgentState(prev => ({ 
+        ...prev, 
+        current_step: 'advertiser_preferences',
+        progress: 50,
+        avatar_state: 'analyzing'
+      }));
+      
+      await fetch('http://localhost:8000/agent/advance', { method: 'POST' });
+      
+      const step2Response = await fetch('http://localhost:8000/agent/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: "Continue with historical analysis", files: [] })
+      });
+      const step2Result = await step2Response.json();
+      
+      setCampaignData(prev => [...prev, {
+        step: 'advertiser_preferences',
+        data: step2Result.data,
+        confidence: step2Result.confidence,
+        timestamp: new Date().toISOString()
+      }]);
+      
+      setAgentState(prev => ({ 
+        ...prev, 
+        last_reasoning: step2Result.reasoning,
+        next_action: step2Result.action,
+        avatar_state: 'thinking'
+      }));
+      
+      // Wait 3 seconds before advancing
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Step 3: Audience Analysis
+      setAgentState(prev => ({ 
+        ...prev, 
+        current_step: 'audience_generation',
+        progress: 75,
+        avatar_state: 'analyzing'
+      }));
+      
+      await fetch('http://localhost:8000/agent/advance', { method: 'POST' });
+      
+      const step3Response = await fetch('http://localhost:8000/agent/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: "Generate ACR audience segments", files: [] })
+      });
+      const step3Result = await step3Response.json();
+      
+      setCampaignData(prev => [...prev, {
+        step: 'audience_generation',
+        data: step3Result.data,
+        confidence: step3Result.confidence,
+        timestamp: new Date().toISOString()
+      }]);
+      
+      setAgentState(prev => ({ 
+        ...prev, 
+        last_reasoning: step3Result.reasoning,
+        next_action: step3Result.action,
+        avatar_state: 'thinking'
+      }));
+      
+      // Wait 3 seconds before final step
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Step 4: Line Item Generation
+      setAgentState(prev => ({ 
+        ...prev, 
+        current_step: 'campaign_generation',
+        progress: 100,
+        avatar_state: 'generating'
+      }));
+      
+      await fetch('http://localhost:8000/agent/advance', { method: 'POST' });
+      
+      const step4Response = await fetch('http://localhost:8000/agent/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: "Build executable line items", files: [] })
+      });
+      const step4Result = await step4Response.json();
+      
+      setCampaignData(prev => [...prev, {
+        step: 'campaign_generation',
+        data: step4Result.data,
+        confidence: step4Result.confidence,
+        timestamp: new Date().toISOString()
+      }]);
+      
+      setAgentState(prev => ({ 
+        ...prev, 
+        last_reasoning: step4Result.reasoning,
+        next_action: step4Result.action,
+        avatar_state: 'complete'
+      }));
+      
+    } catch (error) {
+      console.error('Auto-advance error:', error);
+    } finally {
+      setIsAutoAdvancing(false);
+      setIsProcessing(false);
+    }
+  };
 
   const handleCampaignInput = async (input: string, files?: FileList) => {
     setIsProcessing(true);
     setAgentState(prev => ({ ...prev, avatar_state: 'analyzing' }));
     
-    try {
-      // TODO: Connect to COT Agent API
-      const response = await fetch('http://localhost:8000/agent/process', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input, files: files ? Array.from(files) : [] })
-      });
-      
-      const result = await response.json();
-      
-      setAgentState({
-        current_step: result.step,
-        progress: result.progress,
-        last_reasoning: result.reasoning,
-        next_action: result.action,
-        avatar_state: 'thinking'
-      });
-      
-      setCampaignData(prev => [...prev, {
-        step: result.step,
-        data: result.data,
-        confidence: result.confidence,
-        timestamp: new Date().toISOString()
-      }]);
-      
-    } catch (error) {
-      console.error('Agent processing error:', error);
-    } finally {
-      setIsProcessing(false);
-    }
+    // Reset campaign data for new workflow
+    setCampaignData([]);
+    
+    // Start auto-advance workflow
+    await autoAdvanceWorkflow(input);
   };
 
   const steps = [
@@ -83,6 +203,44 @@ const AgenticWorkspace: React.FC = () => {
 
   const getCurrentStepData = () => {
     return campaignData.find(data => data.step === agentState.current_step);
+  };
+
+  const getStepColors = (color: string, isProcessing: boolean, status: string) => {
+    const colorMap = {
+      blue: {
+        bg: isProcessing ? 'bg-blue-500 ring-2 ring-blue-300' : 
+            status === 'active' ? 'bg-blue-500' : 
+            status === 'completed' ? 'bg-blue-500' : 'bg-gray-200',
+        text: isProcessing ? 'text-blue-600 animate-pulse' :
+              status === 'active' ? 'text-blue-600' :
+              status === 'completed' ? 'text-green-600' : 'text-gray-400'
+      },
+      purple: {
+        bg: isProcessing ? 'bg-purple-500 ring-2 ring-purple-300' : 
+            status === 'active' ? 'bg-purple-500' : 
+            status === 'completed' ? 'bg-purple-500' : 'bg-gray-200',
+        text: isProcessing ? 'text-purple-600 animate-pulse' :
+              status === 'active' ? 'text-blue-600' :
+              status === 'completed' ? 'text-green-600' : 'text-gray-400'
+      },
+      green: {
+        bg: isProcessing ? 'bg-green-500 ring-2 ring-green-300' : 
+            status === 'active' ? 'bg-green-500' : 
+            status === 'completed' ? 'bg-green-500' : 'bg-gray-200',
+        text: isProcessing ? 'text-green-600 animate-pulse' :
+              status === 'active' ? 'text-blue-600' :
+              status === 'completed' ? 'text-green-600' : 'text-gray-400'
+      },
+      orange: {
+        bg: isProcessing ? 'bg-orange-500 ring-2 ring-orange-300' : 
+            status === 'active' ? 'bg-orange-500' : 
+            status === 'completed' ? 'bg-orange-500' : 'bg-gray-200',
+        text: isProcessing ? 'text-orange-600 animate-pulse' :
+              status === 'active' ? 'text-blue-600' :
+              status === 'completed' ? 'text-green-600' : 'text-gray-400'
+      }
+    };
+    return colorMap[color] || colorMap.blue;
   };
 
   const renderStepContent = () => {
@@ -274,7 +432,7 @@ const AgenticWorkspace: React.FC = () => {
           <div className="flex-1">
             <ChatInterface 
               onCampaignInput={handleCampaignInput}
-              isProcessing={isProcessing}
+              isProcessing={isProcessing || isAutoAdvancing}
               agentState={agentState}
             />
           </div>
@@ -287,29 +445,38 @@ const AgenticWorkspace: React.FC = () => {
           <div className="h-32 bg-white border-b border-gray-200 px-6 py-4">
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-lg font-semibold text-gray-900">Ad Planning Progress</h2>
-              <span className="text-sm text-gray-500">{Math.round(agentState.progress / 25)} Step Running</span>
+              <div className="flex items-center space-x-2">
+                {isAutoAdvancing && (
+                  <div className="flex items-center space-x-1 text-blue-600">
+                    <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+                    <span className="text-sm">Auto-advancing...</span>
+                  </div>
+                )}
+                <span className="text-sm text-gray-500">
+                  {Math.round(agentState.progress / 25)} Step Running
+                </span>
+              </div>
             </div>
             
             {/* 4-Step Progress Bar */}
             <div className="grid grid-cols-4 gap-4">
               {steps.map((step, index) => {
                 const status = getStepStatus(step.id);
+                const isCurrentlyProcessing = agentState.current_step === step.id && isAutoAdvancing;
+                const colors = getStepColors(step.color, isCurrentlyProcessing, status);
+                
                 return (
                   <div key={step.id} className="flex flex-col items-center space-y-1">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg transition-all duration-300 ${
-                      status === 'active' ? `bg-${step.color}-500 text-white animate-pulse` :
-                      status === 'completed' ? `bg-${step.color}-500 text-white` :
-                      'bg-gray-200 text-gray-400'
-                    }`}>
-                      {status === 'completed' ? '✓' : step.icon}
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg transition-all duration-500 ${
+                      status === 'pending' ? 'text-gray-400' : 'text-white'
+                    } ${colors.bg}`}>
+                      {isCurrentlyProcessing ? '⏳' :
+                       status === 'completed' ? '✓' : 
+                       status === 'active' ? step.icon : step.icon}
                     </div>
                     <div className="text-center">
-                      <p className={`text-xs font-medium ${
-                        status === 'active' ? 'text-blue-600' :
-                        status === 'completed' ? 'text-green-600' :
-                        'text-gray-400'
-                      }`}>
-                        Step {index + 1}
+                      <p className={`text-xs font-medium ${colors.text}`}>
+                        {isCurrentlyProcessing ? 'Processing...' : `Step ${index + 1}`}
                       </p>
                       <p className={`text-xs ${
                         status !== 'pending' ? 'text-gray-700' : 'text-gray-400'
