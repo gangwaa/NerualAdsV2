@@ -46,12 +46,18 @@ class AdvertiserPreferencesAgent:
     def _load_advertiser_database(self) -> List[Dict]:
         """Load the advertiser vector database from JSON file"""
         try:
-            # Path to the uploaded advertiser database
-            db_path = os.path.join(os.path.dirname(__file__), "../../advertiser_vector_database_full.json")
+            # Try local file first
+            db_path = os.path.join(os.path.dirname(__file__), "../advertiser_vector_database_full.json")
+            if not os.path.exists(db_path):
+                # Fallback to original path
+                db_path = os.path.join(os.path.dirname(__file__), "../../advertiser_vector_database_full.json")
+            
             with open(db_path, 'r') as f:
-                return json.load(f)
+                data = json.load(f)
+                print(f"✅ Loaded advertiser database with {len(data)} advertisers")
+                return data
         except Exception as e:
-            print(f"Error loading advertiser database: {e}")
+            print(f"❌ Error loading advertiser database: {e}")
             return []
     
     def _find_advertiser_data(self, advertiser_name: str) -> Dict[str, Any]:
