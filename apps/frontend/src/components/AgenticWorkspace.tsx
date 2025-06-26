@@ -31,10 +31,18 @@ const AgenticWorkspace: React.FC = () => {
   const [campaignData, setCampaignData] = useState<CampaignData[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isAutoAdvancing, setIsAutoAdvancing] = useState(false);
+  const [chatMessages, setChatMessages] = useState<Array<{type: 'user' | 'agent', content: string, timestamp: string}>>([]);
 
   // Auto-advance through steps with delays
   const autoAdvanceWorkflow = async (initialInput: string) => {
     setIsAutoAdvancing(true);
+    
+    // Add user message to chat
+    setChatMessages(prev => [...prev, {
+      type: 'user',
+      content: initialInput,
+      timestamp: new Date().toISOString()
+    }]);
     
     try {
       // Step 1: Campaign Data
@@ -51,6 +59,13 @@ const AgenticWorkspace: React.FC = () => {
         body: JSON.stringify({ input: initialInput, files: [] })
       });
       const step1Result = await step1Response.json();
+      
+      // Add agent reasoning to chat
+      setChatMessages(prev => [...prev, {
+        type: 'agent',
+        content: step1Result.reasoning,
+        timestamp: new Date().toISOString()
+      }]);
       
       setCampaignData([{
         step: 'campaign_data',
@@ -86,6 +101,13 @@ const AgenticWorkspace: React.FC = () => {
       });
       const step2Result = await step2Response.json();
       
+      // Add agent reasoning to chat
+      setChatMessages(prev => [...prev, {
+        type: 'agent',
+        content: step2Result.reasoning,
+        timestamp: new Date().toISOString()
+      }]);
+      
       setCampaignData(prev => [...prev, {
         step: 'advertiser_preferences',
         data: step2Result.data,
@@ -119,6 +141,13 @@ const AgenticWorkspace: React.FC = () => {
         body: JSON.stringify({ input: "Generate ACR audience segments", files: [] })
       });
       const step3Result = await step3Response.json();
+      
+      // Add agent reasoning to chat
+      setChatMessages(prev => [...prev, {
+        type: 'agent',
+        content: step3Result.reasoning,
+        timestamp: new Date().toISOString()
+      }]);
       
       setCampaignData(prev => [...prev, {
         step: 'audience_generation',
@@ -154,6 +183,13 @@ const AgenticWorkspace: React.FC = () => {
       });
       const step4Result = await step4Response.json();
       
+      // Add agent reasoning to chat
+      setChatMessages(prev => [...prev, {
+        type: 'agent',
+        content: step4Result.reasoning,
+        timestamp: new Date().toISOString()
+      }]);
+      
       setCampaignData(prev => [...prev, {
         step: 'campaign_generation',
         data: step4Result.data,
@@ -170,6 +206,11 @@ const AgenticWorkspace: React.FC = () => {
       
     } catch (error) {
       console.error('Auto-advance error:', error);
+      setChatMessages(prev => [...prev, {
+        type: 'agent',
+        content: 'Sorry, I encountered an error processing your request. Please try again.',
+        timestamp: new Date().toISOString()
+      }]);
     } finally {
       setIsAutoAdvancing(false);
       setIsProcessing(false);
@@ -182,6 +223,7 @@ const AgenticWorkspace: React.FC = () => {
     
     // Reset campaign data for new workflow
     setCampaignData([]);
+    setChatMessages([]);
     
     // Start auto-advance workflow
     await autoAdvanceWorkflow(input);
@@ -250,17 +292,32 @@ const AgenticWorkspace: React.FC = () => {
       case 'campaign_data':
         return (
           <div className="space-y-6">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="text-lg font-semibold text-blue-900 mb-2">Campaign Parameters</h3>
-              <p className="text-blue-700 mb-4">Define campaign basics</p>
-              {stepData?.data && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+                  <span className="text-white text-lg">📊</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-blue-900">Campaign Parameters</h3>
+                  <p className="text-blue-700 text-sm">Define campaign basics</p>
+                </div>
+                {stepData && (
+                  <div className="ml-auto">
+                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                      ✓ Identified
+                    </span>
+                  </div>
+                )}
+              </div>
+              
+              {stepData?.data ? (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Advertiser</label>
                     <input 
                       type="text" 
                       value={stepData.data.advertiser || ''} 
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
                       readOnly
                     />
                   </div>
@@ -268,8 +325,8 @@ const AgenticWorkspace: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Budget</label>
                     <input 
                       type="text" 
-                      value={stepData.data.budget ? `$${stepData.data.budget}` : ''} 
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      value={stepData.data.budget ? `$${stepData.data.budget?.toLocaleString()}` : ''} 
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
                       readOnly
                     />
                   </div>
@@ -278,7 +335,7 @@ const AgenticWorkspace: React.FC = () => {
                     <input 
                       type="text" 
                       value={stepData.data.objective || ''} 
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
                       readOnly
                     />
                   </div>
@@ -287,9 +344,18 @@ const AgenticWorkspace: React.FC = () => {
                     <input 
                       type="text" 
                       value={stepData.data.timeline || ''} 
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
                       readOnly
                     />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center py-8 text-gray-500">
+                  <div className="text-center">
+                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                      <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                    <p className="text-sm">Parsing campaign parameters...</p>
                   </div>
                 </div>
               )}
@@ -300,13 +366,69 @@ const AgenticWorkspace: React.FC = () => {
       case 'advertiser_preferences':
         return (
           <div className="space-y-6">
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-              <h3 className="text-lg font-semibold text-purple-900 mb-2">Historical Data</h3>
-              <p className="text-purple-700 mb-4">Review performance data</p>
-              <div className="text-sm text-purple-600">
-                <p>🔍 Analyzing historical data...</p>
-                {stepData && <p>✅ Found {Object.keys(stepData.data || {}).length} data points</p>}
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
+                  <span className="text-white text-lg">📈</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-purple-900">Historical Data</h3>
+                  <p className="text-purple-700 text-sm">Advertiser behavioral insights</p>
+                </div>
+                {stepData && (
+                  <div className="ml-auto">
+                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                      ✓ Retrieved
+                    </span>
+                  </div>
+                )}
               </div>
+              
+              {stepData?.data ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <h4 className="font-medium text-gray-700 mb-2">Content Preferences</h4>
+                      <div className="space-y-1">
+                        {stepData.data.content_preferences?.map((pref: string, index: number) => (
+                          <span key={index} className="inline-block px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs mr-1">
+                            {pref}
+                          </span>
+                        )) || <span className="text-gray-500 text-sm">Analyzing...</span>}
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-700 mb-2">Geographic Focus</h4>
+                      <div className="space-y-1">
+                        {stepData.data.geo_preferences?.map((geo: string, index: number) => (
+                          <span key={index} className="inline-block px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs mr-1">
+                            {geo}
+                          </span>
+                        )) || <span className="text-gray-500 text-sm">Analyzing...</span>}
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-700 mb-2">Device Targeting</h4>
+                      <div className="space-y-1">
+                        {stepData.data.device_preferences?.map((device: string, index: number) => (
+                          <span key={index} className="inline-block px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs mr-1">
+                            {device}
+                          </span>
+                        )) || <span className="text-gray-500 text-sm">Analyzing...</span>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center py-8 text-gray-500">
+                  <div className="text-center">
+                    <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                      <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                    <p className="text-sm">Analyzing historical data...</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         );
@@ -314,18 +436,63 @@ const AgenticWorkspace: React.FC = () => {
       case 'audience_generation':
         return (
           <div className="space-y-6">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <h3 className="text-lg font-semibold text-green-900 mb-2">Audience Analysis</h3>
-              <p className="text-green-700 mb-4">Analyze target audience</p>
-              {stepData?.data?.acr_segments && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
+                  <span className="text-white text-lg">🎯</span>
+                </div>
                 <div>
-                  <h4 className="font-medium text-gray-700 mb-2">ACR Segments:</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {stepData.data.acr_segments.map((segment: string, index: number) => (
-                      <span key={index} className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
-                        {segment}
-                      </span>
-                    ))}
+                  <h3 className="text-lg font-semibold text-green-900">Audience Analysis</h3>
+                  <p className="text-green-700 text-sm">ACR segments & pricing insights</p>
+                </div>
+                {stepData && (
+                  <div className="ml-auto">
+                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                      ✓ Synthesized
+                    </span>
+                  </div>
+                )}
+              </div>
+              
+              {stepData?.data ? (
+                <div className="space-y-4">
+                  {stepData.data.acr_segments && (
+                    <div>
+                      <h4 className="font-medium text-gray-700 mb-3">ACR Audience Segments</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        {stepData.data.acr_segments.map((segment: string, index: number) => (
+                          <div key={index} className="flex items-center space-x-2 p-3 bg-white border border-green-200 rounded-lg">
+                            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                              <span className="text-green-600 text-sm">👥</span>
+                            </div>
+                            <span className="text-sm font-medium text-gray-700">{segment}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {stepData.data.cpm_floors && (
+                    <div>
+                      <h4 className="font-medium text-gray-700 mb-3">CPM Floor Pricing</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        {Object.entries(stepData.data.cpm_floors).map(([device, cpm]) => (
+                          <div key={device} className="bg-white p-3 border border-green-200 rounded-lg">
+                            <div className="text-sm font-medium text-gray-700">{device}</div>
+                            <div className="text-lg font-bold text-green-600">${cpm} CPM</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center justify-center py-8 text-gray-500">
+                  <div className="text-center">
+                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                      <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                    <p className="text-sm">Generating audience segments...</p>
                   </div>
                 </div>
               )}
@@ -336,35 +503,76 @@ const AgenticWorkspace: React.FC = () => {
       case 'campaign_generation':
         return (
           <div className="space-y-6">
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-              <h3 className="text-lg font-semibold text-orange-900 mb-2">Media Plan</h3>
-              <p className="text-orange-700 mb-4">Generate media strategy</p>
-              {stepData?.data?.line_items && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
+                  <span className="text-white text-lg">⚡</span>
+                </div>
                 <div>
-                  <h4 className="font-medium text-gray-700 mb-2">Line Items Generated:</h4>
-                  <div className="overflow-x-auto">
+                  <h3 className="text-lg font-semibold text-orange-900">Media Plan</h3>
+                  <p className="text-orange-700 text-sm">Executable line items ready for ad server</p>
+                </div>
+                {stepData && (
+                  <div className="ml-auto">
+                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                      ✓ Constructed
+                    </span>
+                  </div>
+                )}
+              </div>
+              
+              {stepData?.data?.line_items ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium text-gray-700">Generated Line Items</h4>
+                    <button className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm">
+                      📥 Download CSV
+                    </button>
+                  </div>
+                  <div className="overflow-x-auto bg-white rounded-lg border border-orange-200">
                     <table className="min-w-full text-sm">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left py-2">Name</th>
-                          <th className="text-left py-2">Content</th>
-                          <th className="text-left py-2">Geo</th>
-                          <th className="text-left py-2">Device</th>
-                          <th className="text-left py-2">CPM</th>
+                      <thead className="bg-orange-100">
+                        <tr>
+                          <th className="text-left py-3 px-4 font-medium text-orange-900">Name</th>
+                          <th className="text-left py-3 px-4 font-medium text-orange-900">Content</th>
+                          <th className="text-left py-3 px-4 font-medium text-orange-900">Geography</th>
+                          <th className="text-left py-3 px-4 font-medium text-orange-900">Device</th>
+                          <th className="text-left py-3 px-4 font-medium text-orange-900">Audience</th>
+                          <th className="text-left py-3 px-4 font-medium text-orange-900">Bid CPM</th>
+                          <th className="text-left py-3 px-4 font-medium text-orange-900">Daily Cap</th>
+                          <th className="text-left py-3 px-4 font-medium text-orange-900">Freq Cap</th>
                         </tr>
                       </thead>
-                      <tbody>
-                        {stepData.data.line_items.slice(0, 3).map((item: any, index: number) => (
-                          <tr key={index} className="border-b">
-                            <td className="py-2">{item.name}</td>
-                            <td className="py-2">{item.content}</td>
-                            <td className="py-2">{item.geo}</td>
-                            <td className="py-2">{item.device}</td>
-                            <td className="py-2">{item.bid_cpm}</td>
+                      <tbody className="divide-y divide-gray-200">
+                        {stepData.data.line_items.slice(0, 6).map((item: any, index: number) => (
+                          <tr key={index} className="hover:bg-gray-50">
+                            <td className="py-3 px-4 font-medium text-gray-900">{item.name}</td>
+                            <td className="py-3 px-4 text-gray-700">{item.content}</td>
+                            <td className="py-3 px-4 text-gray-700">{item.geo}</td>
+                            <td className="py-3 px-4 text-gray-700">{item.device}</td>
+                            <td className="py-3 px-4 text-gray-700">{item.audience}</td>
+                            <td className="py-3 px-4 text-gray-700 font-medium">{item.bid_cpm}</td>
+                            <td className="py-3 px-4 text-gray-700">{item.daily_cap}</td>
+                            <td className="py-3 px-4 text-gray-700">{item.frequency_cap}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                  
+                  {stepData.data.line_items.length > 6 && (
+                    <p className="text-sm text-gray-500 text-center">
+                      Showing 6 of {stepData.data.line_items.length} line items. Download CSV for complete list.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center justify-center py-8 text-gray-500">
+                  <div className="text-center">
+                    <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                      <div className="w-6 h-6 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                    <p className="text-sm">Building line items...</p>
                   </div>
                 </div>
               )}
@@ -373,7 +581,17 @@ const AgenticWorkspace: React.FC = () => {
         );
         
       default:
-        return <div>Loading...</div>;
+        return (
+          <div className="flex items-center justify-center py-12 text-gray-500">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">⚡</span>
+              </div>
+              <p className="text-lg font-medium mb-2">Neural is ready to help</p>
+              <p className="text-sm">Start a conversation to begin your campaign planning</p>
+            </div>
+          </div>
+        );
     }
   };
 
@@ -434,6 +652,7 @@ const AgenticWorkspace: React.FC = () => {
               onCampaignInput={handleCampaignInput}
               isProcessing={isProcessing || isAutoAdvancing}
               agentState={agentState}
+              chatMessages={chatMessages}
             />
           </div>
         </div>
@@ -495,18 +714,6 @@ const AgenticWorkspace: React.FC = () => {
             <div className="p-6">
               {renderStepContent()}
             </div>
-            
-            {/* Agent Reasoning (if active) */}
-            {agentState.last_reasoning && (
-              <div className="p-6 border-t border-gray-200 bg-white">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Agent Reasoning</h3>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <pre className="text-sm text-gray-700 whitespace-pre-wrap">
-                    {agentState.last_reasoning}
-                  </pre>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
