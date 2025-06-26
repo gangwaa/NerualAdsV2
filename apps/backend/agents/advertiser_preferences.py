@@ -259,5 +259,5 @@ class AdvertiserPreferencesAgent:
         
         Historical patterns retrieved.
         
-                 CPM Range: ${preferences.cpm_range['min']}-${preferences.cpm_range['max']} based on network premium and historical performance.
+        CPM Range: ${preferences.cpm_range['min']}-${preferences.cpm_range['max']} based on network premium and historical performance.
         """ 
