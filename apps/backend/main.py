@@ -7,6 +7,8 @@ from audience.module import list_segments
 from planner.module import build_plan
 from exporter.module import export_csv
 from models.campaign import CampaignSpec, CampaignPlan
+from agents.cot_agent import COTReasoningAgent
+from pydantic import BaseModel
 import os
 
 # Create FastAPI app
@@ -21,14 +23,65 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Initialize COT Agent
+cot_agent = COTReasoningAgent()
+
 # Mount static files for exports
 exports_dir = os.path.join(os.path.dirname(__file__), "data", "exports")
 os.makedirs(exports_dir, exist_ok=True)
 app.mount("/exports", StaticFiles(directory=exports_dir), name="exports")
 
+class AgentRequest(BaseModel):
+    input: str
+    files: list = []
+
 @app.get("/")
 async def root():
     return {"message": "CTV Campaign Management API", "status": "running"}
+
+@app.post("/agent/process")
+async def process_agent_request(request: AgentRequest):
+    """Process campaign request through COT Agent"""
+    try:
+        # Process through COT agent
+        thought = await cot_agent.process_campaign_request(request.input, request.files)
+        
+        # Get current status
+        status = cot_agent.get_current_status()
+        
+        return {
+            "step": thought.step.value,
+            "reasoning": thought.reasoning,
+            "action": thought.action,
+            "data": thought.data,
+            "confidence": thought.confidence,
+            "progress": status["progress"],
+            "status": "success"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Agent processing error: {str(e)}")
+
+@app.get("/agent/status")
+async def get_agent_status():
+    """Get current agent status"""
+    try:
+        status = cot_agent.get_current_status()
+        return status
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Status error: {str(e)}")
+
+@app.post("/agent/advance")
+async def advance_agent_step():
+    """Advance agent to next step"""
+    try:
+        next_step = await cot_agent.advance_to_next_step()
+        status = cot_agent.get_current_status()
+        return {
+            "current_step": next_step.value,
+            "status": status
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Advance error: {str(e)}")
 
 @app.post("/parse", response_model=CampaignSpec)
 async def parse_endpoint(file: UploadFile = File(...)):
