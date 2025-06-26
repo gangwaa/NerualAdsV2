@@ -33,13 +33,23 @@ class AgentThought:
 
 class COTReasoningAgent:
     """
-    Chain of Thought Reasoning Agent for CTV Campaign Management
+    Neural - Sophisticated Ad Planning and Buying Assistant
     
-    This agent orchestrates the entire campaign setup process using OpenAI:
-    1. Analyzes campaign requirements with GPT-4
-    2. Reasons through optimal configurations
-    3. Coordinates other specialized agents
-    4. Provides transparent thinking process to UI
+    A Chain of Thought reasoning agent for premium streaming platforms like LG Ads.
+    
+    Neural helps ad ops professionals by:
+    1. Parsing campaign briefs (advertiser, budget, objectives)
+    2. Retrieving historical buying patterns and preferences
+    3. Simulating yield management signals and pricing insights
+    4. Creating custom ACR audience definitions
+    5. Building executable ad server line items with detailed targeting
+    
+    Neural follows a structured workflow with confirmations:
+    - "Campaign parameters identified."
+    - "Historical patterns retrieved."
+    - "Pricing insights gathered."
+    - "Audience definition synthesized."
+    - "Line items successfully constructed."
     """
     
     def __init__(self):
@@ -83,30 +93,71 @@ class COTReasoningAgent:
         
         step_context = {
             CampaignStep.PARSING: """
-            You are analyzing campaign requirements for a Connected TV advertising platform.
-            Focus on extracting key campaign parameters like budget, target audience, 
-            objectives, timeline, and creative specifications.
+            You are Neural, a sophisticated ad planning and buying assistant helping an ad ops person 
+            working at a premium streaming platform like LG Ads.
+            
+            Your task is to parse the campaign intent from the user's prompt, identifying:
+            - Advertiser name
+            - Budget amount  
+            - Campaign objective (awareness, conversion, etc.)
+            - Timeline/duration
+            
+            After parsing, confirm with: "Campaign parameters identified."
             """,
             CampaignStep.PREFERENCES: """
-            You are accessing advertiser behavioral data to understand historical preferences
-            for network affinities, genre preferences, audience segments, and performance patterns.
+            You are Neural. Now retrieve historical buying patterns using advertiser-specific data.
+            
+            Provide 5-10 insights about the advertiser's preferred:
+            - Content types (e.g., Family Animation, Reality Shows, News, Sports)
+            - Geographic preferences
+            - Device targeting patterns
+            - Audience segment preferences
+            - Historical performance data
+            
+            After analysis, confirm with: "Historical patterns retrieved."
             """,
             CampaignStep.AUDIENCE: """
-            You are generating optimal audience segments by combining campaign objectives
-            with advertiser preferences for precision targeting.
+            You are Neural. Create audience definitions and simulate yield management signals.
+            
+            Tasks:
+            1. Simulate yield management signals (CPM floors, regional cost variation, content pricing)
+            2. Create custom audience definition using ACR segments:
+               - Light Streamers
+               - Heavy Binge Watchers  
+               - Occasional Viewers
+               - News Enthusiasts
+               - Sports Fans
+               - Family Co-Viewers
+            
+            Confirm with: "Pricing insights gathered." then "Audience definition synthesized."
             """,
             CampaignStep.GENERATION: """
-            You are creating campaign line items for ad server execution, including
-            budget distribution, dayparting, creative rotation, and optimization settings.
+            You are Neural. Build 5-7 executable ad server line items across content types, geographies, and devices.
+            
+            Each line item MUST include:
+            - name (format: ADVERTISER_GEO_CONTENT)
+            - content (Family Animation, Lifestyle/Reality, News, Sports, etc.)
+            - geo (Midwest, South, Northwest, US excl. NYC/SF, Nationwide, etc.)
+            - device (CTV, Mobile, Desktop)
+            - audience (use ACR segment names)
+            - bid CPM (competitive pricing $28-$40)
+            - daily cap (budget allocation)
+            - frequency cap (1-3/day)
+            
+            After completion, confirm with: "Line items successfully constructed."
+            Then display a clean table of line items.
             """
         }
         
         system_prompt = f"""
-        You are a CTV Campaign Intelligence Agent. {step_context.get(self.current_step, "")}
+        You are Neural, a sophisticated ad planning and buying assistant for premium streaming platforms like LG Ads.
         
-        Provide clear, step-by-step reasoning about what you're analyzing and why.
-        Use emojis to make your reasoning engaging and easy to follow.
-        Be specific about the data you're working with and the insights you're generating.
+        {step_context.get(self.current_step, "")}
+        
+        Always be professional, data-driven, and specific. Use industry terminology and provide 
+        actionable insights that an ad ops professional would expect.
+        
+        Provide clear reasoning about your analysis and recommendations.
         """
         
         try:
@@ -114,7 +165,7 @@ class COTReasoningAgent:
                 model=self.model,
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"Campaign input: {user_input}"}
+                    {"role": "user", "content": f"Campaign Brief: {user_input}"}
                 ],
                 temperature=self.temperature,
                 max_tokens=self.max_tokens
@@ -129,9 +180,18 @@ class COTReasoningAgent:
     async def _determine_action_with_openai(self, user_input: str, reasoning: str) -> str:
         """Determine next action using OpenAI"""
         
+        action_context = {
+            CampaignStep.PARSING: "Parse campaign parameters and identify advertiser, budget, objectives",
+            CampaignStep.PREFERENCES: "Analyze historical buying patterns and advertiser preferences", 
+            CampaignStep.AUDIENCE: "Create audience segments and gather pricing insights",
+            CampaignStep.GENERATION: "Build executable line items with detailed specifications"
+        }
+        
         system_prompt = f"""
-        Based on the campaign analysis and current step ({self.current_step.value}),
-        determine the specific next action to take. Be concise and actionable.
+        You are Neural, an ad planning assistant. Based on the current step ({self.current_step.value}), 
+        determine the specific next action: {action_context.get(self.current_step, "Continue processing")}
+        
+        Be specific and actionable in your response.
         """
         
         try:
@@ -139,7 +199,7 @@ class COTReasoningAgent:
                 model=self.model,
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"Reasoning: {reasoning}\nCampaign input: {user_input}"}
+                    {"role": "user", "content": f"Reasoning: {reasoning}\nCampaign Brief: {user_input}"}
                 ],
                 temperature=0.5,
                 max_tokens=200
@@ -151,13 +211,18 @@ class COTReasoningAgent:
             return self._determine_fallback_action()
     
     async def _extract_data_with_openai(self, user_input: str) -> Dict[str, Any]:
-        """Extract structured data using OpenAI"""
+        """Extract structured campaign data using OpenAI"""
         
-        system_prompt = """
-        Extract structured campaign data from the user input.
-        Return a JSON object with relevant campaign parameters.
-        Include fields like campaign_name, budget, objective, target_demographics, 
-        timeline, creative_formats, and a confidence score.
+        system_prompt = f"""
+        You are Neural, extracting campaign data for step: {self.current_step.value}
+        
+        Extract relevant data based on current step:
+        - PARSING: advertiser, budget, objective, timeline
+        - PREFERENCES: content_preferences, geo_preferences, device_preferences  
+        - AUDIENCE: acr_segments, pricing_signals, audience_insights
+        - GENERATION: line_items with all required fields
+        
+        Return valid JSON with extracted data and confidence score.
         """
         
         try:
@@ -165,10 +230,10 @@ class COTReasoningAgent:
                 model=self.model,
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_input}
+                    {"role": "user", "content": f"Campaign Brief: {user_input}"}
                 ],
                 temperature=0.3,
-                max_tokens=500
+                max_tokens=800
             )
             
             # Try to parse JSON response
@@ -186,46 +251,133 @@ class COTReasoningAgent:
         
         if self.current_step == CampaignStep.PARSING:
             return f"""
-            🤔 ANALYZING CAMPAIGN REQUIREMENTS:
+            📊 Neural - Campaign Analysis
             
-            I need to extract key campaign parameters from the user input:
-            • Budget allocation and constraints
-            • Target audience demographics
-            • Campaign objectives (awareness, conversion, etc.)
-            • Timeline and scheduling requirements
-            • Creative specifications and formats
+            Parsing campaign brief: "{user_input[:100]}..."
             
-            From the input: "{user_input[:100]}..."
+            Identifying key parameters:
+            • Advertiser identification
+            • Budget allocation and constraints  
+            • Campaign objectives (awareness/conversion/engagement)
+            • Timeline and flight dates
+            • Target audience requirements
             
-            I can identify several key elements that will drive the campaign strategy.
-            Let me parse this systematically...
+            Campaign parameters identified.
+            """
+            
+        elif self.current_step == CampaignStep.PREFERENCES:
+            return """
+            📈 Neural - Historical Analysis
+            
+            Retrieving advertiser buying patterns:
+            • Content affinity analysis (genres, dayparts)
+            • Geographic performance data
+            • Device targeting preferences
+            • Historical CPM performance
+            • Audience segment effectiveness
+            
+            Historical patterns retrieved.
+            """
+            
+        elif self.current_step == CampaignStep.AUDIENCE:
+            return """
+            🎯 Neural - Audience & Pricing Intelligence
+            
+            Generating yield management signals:
+            • CPM floor analysis by content type
+            • Regional cost variations
+            • Content premium pricing
+            
+            Creating ACR audience segments:
+            • Heavy Binge Watchers, Light Streamers
+            • News Enthusiasts, Sports Fans
+            • Family Co-Viewers, Occasional Viewers
+            
+            Pricing insights gathered.
+            Audience definition synthesized.
+            """
+            
+        elif self.current_step == CampaignStep.GENERATION:
+            return """
+            ⚡ Neural - Line Item Construction
+            
+            Building executable ad server line items:
+            • Content targeting across genres
+            • Geographic distribution strategy
+            • Device optimization (CTV/Mobile/Desktop)
+            • ACR audience mapping
+            • Competitive bid pricing ($28-$40 CPM)
+            • Budget allocation and frequency caps
+            
+            Line items successfully constructed.
             """
         
-        return "Processing campaign requirements..."
+        return "Neural processing campaign requirements..."
     
     def _determine_fallback_action(self) -> str:
         """Fallback action when OpenAI is unavailable"""
         action_map = {
-            CampaignStep.PARSING: "Parse campaign data and extract parameters",
-            CampaignStep.PREFERENCES: "Query MCP database for advertiser preferences", 
-            CampaignStep.AUDIENCE: "Generate optimal audience segments",
-            CampaignStep.GENERATION: "Create line items for ad server upload",
-            CampaignStep.COMPLETE: "Finalize campaign and prepare download"
+            CampaignStep.PARSING: "Parse advertiser, budget, and campaign objectives from brief",
+            CampaignStep.PREFERENCES: "Analyze historical buying patterns and content preferences", 
+            CampaignStep.AUDIENCE: "Generate ACR audience segments and pricing intelligence",
+            CampaignStep.GENERATION: "Construct executable line items with targeting specifications",
+            CampaignStep.COMPLETE: "Finalize campaign plan and prepare delivery"
         }
         
-        return action_map.get(self.current_step, "Continue processing...")
+        return action_map.get(self.current_step, "Continue Neural campaign analysis...")
     
     def _extract_fallback_data(self, user_input: str) -> Dict[str, Any]:
         """Fallback data extraction when OpenAI is unavailable"""
+        
+        if self.current_step == CampaignStep.PARSING:
+            return {
+                "advertiser": "Sample Advertiser",
+                "budget": 250000,
+                "objective": "awareness",
+                "timeline": "30 days",
+                "confidence": 0.75,
+                "source": "neural_fallback"
+            }
+        elif self.current_step == CampaignStep.PREFERENCES:
+            return {
+                "content_preferences": ["Family Animation", "Reality Shows", "News"],
+                "geo_preferences": ["Midwest", "South", "Northwest"],
+                "device_preferences": ["CTV", "Mobile"],
+                "historical_cpm": 32,
+                "confidence": 0.70,
+                "source": "neural_fallback"
+            }
+        elif self.current_step == CampaignStep.AUDIENCE:
+            return {
+                "acr_segments": ["Heavy Binge Watchers", "Light Streamers", "News Enthusiasts"],
+                "cpm_floors": {"CTV": 28, "Mobile": 24},
+                "audience_insights": "High affinity for premium content",
+                "confidence": 0.80,
+                "source": "neural_fallback"
+            }
+        elif self.current_step == CampaignStep.GENERATION:
+            return {
+                "line_items": [
+                    {
+                        "name": "ADV_Midwest_FamilyAnim",
+                        "content": "Family Animation",
+                        "geo": "Midwest",
+                        "device": "CTV",
+                        "audience": "Heavy Binge Watchers",
+                        "bid_cpm": "$36",
+                        "daily_cap": "$8,000",
+                        "frequency_cap": "3/day"
+                    }
+                ],
+                "total_line_items": 6,
+                "confidence": 0.85,
+                "source": "neural_fallback"
+            }
+        
         return {
-            "campaign_name": "Extracted Campaign",
-            "budget": 100000,
-            "objective": "awareness",
-            "target_demographics": ["25-54", "streaming_viewers"],
-            "timeline": "Q1 2024",
-            "creative_formats": ["video", "display"],
-            "confidence": 0.85,
-            "source": "fallback_extraction"
+            "status": "processing",
+            "confidence": 0.60,
+            "source": "neural_fallback"
         }
     
     async def advance_to_next_step(self) -> CampaignStep:
