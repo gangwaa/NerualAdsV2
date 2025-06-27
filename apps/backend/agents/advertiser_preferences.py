@@ -17,10 +17,9 @@ class AdvertiserPreferences:
     advertiser: str
     preferred_targeting: List[str]
     content_preferences: List[str]
+    channel_preferences: List[str]
+    network_preferences: List[str]
     geo_preferences: List[str]
-    device_preferences: List[str]
-    cpm_range: Dict[str, float]
-    performance: Dict[str, float]
     confidence: float
     insights: List[str]
 
@@ -32,7 +31,6 @@ class AdvertiserPreferencesAgent:
     - Content type preferences from actual viewing data
     - Channel and network affinities 
     - Geographic targeting patterns
-    - Historical performance metrics
     - Data-driven insights and recommendations
     """
     
@@ -87,46 +85,36 @@ class AdvertiserPreferencesAgent:
         sorted_items = sorted(filtered.items(), key=lambda x: x[1], reverse=True)
         return [item.replace(f"{prefix}:", "").replace(";", " + ") for item, score in sorted_items[:top_n]]
     
-    def _calculate_cpm_range(self, advertiser_data: Dict) -> Dict[str, float]:
-        """Calculate CPM range based on network and channel preferences"""
-        vector = advertiser_data.get('vector', {})
+    def _extract_top_preferences_with_scores(self, vector_data: Dict[str, float], prefix: str, top_n: int = 5) -> List[Dict]:
+        """Extract top preferences from vector data with their engagement scores"""
+        filtered = {k: v for k, v in vector_data.items() if k.startswith(prefix) and v > 0}
+        sorted_items = sorted(filtered.items(), key=lambda x: x[1], reverse=True)
+        return [
+            {
+                "name": item.replace(f"{prefix}:", "").replace(";", " + "),
+                "engagement": round(score * 100, 1)
+            }
+            for item, score in sorted_items[:top_n]
+        ]
         
-        # Get top networks and their weights
-        top_networks = {k: v for k, v in vector.items() if k.startswith('network:') and v > 0.1}
+    def _analyze_geographic_patterns(self, vector_data: Dict[str, float]) -> List[str]:
+        """Analyze geographic targeting patterns from zipcode data"""
+        geo_data = {k: v for k, v in vector_data.items() if k.startswith('zip:') and v > 0}
         
-        # Premium networks command higher CPMs
-        premium_networks = ['amc', 'discovery', 'aetv', 'scripps']
-        base_cpm = 28
+        if not geo_data:
+            return ["Nationwide targeting recommended"]
         
-        premium_weight = sum(v for k, v in top_networks.items() 
-                           if any(net in k for net in premium_networks))
+        # Sort by engagement and get top markets
+        sorted_geos = sorted(geo_data.items(), key=lambda x: x[1], reverse=True)
+        top_zips = [zip_code.replace('zip:', '') for zip_code, score in sorted_geos[:5]]
         
-        # Adjust CPM based on premium network concentration
-        min_cpm = base_cpm + (premium_weight * 8)
-        max_cpm = min_cpm + 15
+        insights = [f"Strong performance in ZIP codes: {', '.join(top_zips[:3])}" if top_zips else "Nationwide targeting"]
         
-        return {"min": round(min_cpm, 2), "max": round(max_cpm, 2)}
-    
-    def _generate_performance_metrics(self, advertiser_data: Dict) -> Dict[str, float]:
-        """Generate realistic performance metrics based on advertiser profile"""
-        vector = advertiser_data.get('vector', {})
+        # Add regional insights based on zip patterns
+        if len(top_zips) >= 3:
+            insights.append(f"Geographic concentration in {len(top_zips)} key markets")
         
-        # Higher reality TV engagement often correlates with higher CTR
-        reality_engagement = vector.get('genre:Reality', 0)
-        
-        # Premium network concentration affects completion rates
-        premium_networks = ['network:amc', 'network:discovery', 'network:aetv']
-        premium_score = sum(vector.get(net, 0) for net in premium_networks)
-        
-        base_ctr = 0.65 + (reality_engagement * 0.3)
-        base_vtr = 62.0 + (premium_score * 15.0)
-        base_completion = 75.0 + (premium_score * 12.0)
-        
-        return {
-            "ctr": round(min(base_ctr, 1.2), 2),
-            "vtr": round(min(base_vtr, 85.0), 1), 
-            "completion_rate": round(min(base_completion, 95.0), 1)
-        }
+        return insights
     
     async def analyze_advertiser_patterns(self, advertiser: str, campaign_objective: str) -> AdvertiserPreferences:
         """Analyze historical patterns using real advertiser data"""
@@ -141,59 +129,60 @@ class AdvertiserPreferencesAgent:
         vector = advertiser_data['vector']
         total_count = advertiser_data['metadata']['total_count']
         
-        # Extract preferences from vector data
+        # Extract detailed preferences from vector data
         content_preferences = self._extract_top_preferences(vector, 'genre', 6)
-        top_channels = self._extract_top_preferences(vector, 'channel', 8)
-        top_networks = self._extract_top_preferences(vector, 'network', 5)
+        channel_preferences = self._extract_top_preferences(vector, 'channel', 8)
+        network_preferences = self._extract_top_preferences(vector, 'network', 5)
         
-        # Get geographic data (only non-zero zip codes)
-        geo_data = {k: v for k, v in vector.items() if k.startswith('zip:') and v > 0}
-        geo_preferences = list(geo_data.keys())[:3] if geo_data else ["Nationwide"]
+        # Analyze geographic patterns
+        geo_insights = self._analyze_geographic_patterns(vector)
         
-        # Generate targeting recommendations
+        # Generate targeting recommendations based on actual data patterns
         preferred_targeting = [
             f"Historical TV viewer base: {total_count:,} impressions",
-            f"Top content affinity: {content_preferences[0] if content_preferences else 'Mixed content'}",
-            f"Primary networks: {', '.join(top_networks[:2])}" if top_networks else "Multi-network approach"
+            f"Strongest content affinity: {content_preferences[0] if content_preferences else 'Mixed content'}",
+            f"Primary network concentration: {network_preferences[0] if network_preferences else 'Multi-network'}"
         ]
         
-        # Calculate performance metrics and CPM
-        cpm_range = self._calculate_cpm_range(advertiser_data)
-        performance = self._generate_performance_metrics(advertiser_data)
-        
-        # Generate AI insights using OpenAI
-        insights = await self._generate_ai_insights(advertiser, vector, campaign_objective)
+        # Generate comprehensive insights from real data patterns
+        insights = await self._generate_comprehensive_insights(advertiser, vector, campaign_objective, content_preferences, channel_preferences, network_preferences)
         
         return AdvertiserPreferences(
             advertiser=advertiser,
             preferred_targeting=preferred_targeting,
             content_preferences=content_preferences or ["Mixed Content", "Reality TV", "Entertainment"],
-            geo_preferences=geo_preferences or ["Nationwide"],
-            device_preferences=["CTV", "Mobile", "Desktop"],  # Standard for CTV campaigns
-            cpm_range=cpm_range,
-            performance=performance,
+            channel_preferences=channel_preferences or ["Multi-channel approach"],
+            network_preferences=network_preferences or ["Cross-network strategy"],
+            geo_preferences=geo_insights,
             confidence=0.92,  # High confidence with real data
             insights=insights
         )
     
-    async def _generate_ai_insights(self, advertiser: str, vector_data: Dict, objective: str) -> List[str]:
-        """Generate AI-powered insights from vector data"""
+    async def _generate_comprehensive_insights(self, advertiser: str, vector_data: Dict, objective: str, 
+                                             genres: List[str], channels: List[str], networks: List[str]) -> List[str]:
+        """Generate AI-powered insights focusing on networks, channels, genres, and geographic patterns"""
         
-        # Get top genres and channels for context
-        top_genres = self._extract_top_preferences(vector_data, 'genre', 3)
-        top_channels = self._extract_top_preferences(vector_data, 'channel', 3)
+        # Get zipcode patterns for geographic insights
+        geo_data = {k: v for k, v in vector_data.items() if k.startswith('zip:') and v > 0}
+        top_zips = sorted(geo_data.items(), key=lambda x: x[1], reverse=True)[:3] if geo_data else []
         
         system_prompt = f"""
-        You are Neural, analyzing real viewing data for {advertiser}.
+        You are Neural, analyzing real historical viewing data for {advertiser}.
         
-        Based on this data:
-        - Top content: {', '.join(top_genres)}
-        - Top channels: {', '.join(top_channels)}
-        - Campaign objective: {objective}
+        REAL DATA PATTERNS:
+        - Top Genres: {', '.join(genres[:3])}
+        - Top Channels: {', '.join(channels[:3])}
+        - Top Networks: {', '.join(networks[:3])}
+        - Geographic Focus: {', '.join([z[0].replace('zip:', '') for z in top_zips]) if top_zips else 'Nationwide'}
+        - Campaign Objective: {objective}
         
-        Generate 3 concise, actionable insights for ad targeting strategy.
-        Each insight should be under 60 characters.
-        Focus on content strategy, timing, and audience targeting.
+        Generate 4 specific, actionable insights focusing on:
+        1. Content strategy based on genre preferences
+        2. Network/channel optimization opportunities  
+        3. Geographic targeting recommendations
+        4. Cross-platform strategy suggestions
+        
+        Each insight should be 1-2 sentences and data-driven.
         """
         
         try:
@@ -201,24 +190,48 @@ class AdvertiserPreferencesAgent:
                 model=self.model,
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"Analyze targeting strategy for {advertiser}"}
+                    {"role": "user", "content": f"Provide targeting insights for {advertiser} based on historical viewing patterns"}
                 ],
-                temperature=0.4,
-                max_tokens=200
+                temperature=0.3,
+                max_tokens=300
             )
             
             # Parse insights from response
             insights_text = response.choices[0].message.content
-            insights = [insight.strip() for insight in insights_text.split('\n') if insight.strip()]
-            return insights[:3]  # Limit to 3 insights
+            insights = [insight.strip() for insight in insights_text.split('\n') if insight.strip() and not insight.strip().startswith(('1.', '2.', '3.', '4.'))]
+            
+            # If AI fails, provide data-driven fallback insights
+            if len(insights) < 3:
+                insights = self._generate_fallback_insights(genres, channels, networks, top_zips)
+            
+            return insights[:4]  # Limit to 4 insights
             
         except Exception as e:
             print(f"AI insights generation error: {e}")
-            return [
-                "Strong performance in premium content environments",
-                "Focus on evening and weekend dayparts",
-                "Leverage cross-network strategy for scale"
-            ]
+            return self._generate_fallback_insights(genres, channels, networks, top_zips)
+    
+    def _generate_fallback_insights(self, genres: List[str], channels: List[str], networks: List[str], top_zips: List) -> List[str]:
+        """Generate fallback insights based on data patterns"""
+        insights = []
+        
+        if genres:
+            insights.append(f"Strong {genres[0]} content affinity suggests targeting similar programming blocks")
+        
+        if networks and len(networks) >= 2:
+            insights.append(f"Multi-network strategy recommended: focus on {networks[0]} and {networks[1]}")
+        elif networks:
+            insights.append(f"High concentration on {networks[0]} network - consider expansion opportunities")
+        
+        if channels and len(channels) >= 3:
+            insights.append(f"Diverse channel portfolio with {channels[0]}, {channels[1]}, {channels[2]} showing strong engagement")
+        
+        if top_zips:
+            zip_codes = [z[0].replace('zip:', '') for z in top_zips[:2]]
+            insights.append(f"Geographic targeting opportunity in ZIP codes: {', '.join(zip_codes)}")
+        else:
+            insights.append("Nationwide targeting strategy recommended based on broad geographic distribution")
+        
+        return insights[:4]
     
     def _fallback_analysis(self, advertiser: str, campaign_objective: str) -> AdvertiserPreferences:
         """Fallback analysis when advertiser not found in database"""
@@ -227,15 +240,15 @@ class AdvertiserPreferencesAgent:
             advertiser=advertiser,
             preferred_targeting=["Adults 25-54", "Household Income $50K+", "Urban/Suburban"],
             content_preferences=["Reality TV", "Entertainment", "News", "Sports"],
-            geo_preferences=["Nationwide", "Top DMAs"],
-            device_preferences=["CTV", "Mobile"],
-            cpm_range={"min": 28, "max": 42},
-            performance={"ctr": 0.75, "vtr": 65.2, "completion_rate": 78.5},
+            channel_preferences=["Multi-channel approach", "Premium networks", "Broad reach strategy"],
+            network_preferences=["Cross-network strategy", "Premium content focus"],
+            geo_preferences=["Nationwide targeting", "Top DMAs"],
             confidence=0.65,
             insights=[
-                "No historical data - using industry benchmarks",
-                "Consider test campaigns for data collection",
-                "Monitor performance for optimization insights"
+                "No historical data available - using industry benchmarks",
+                "Consider test campaigns across multiple networks for data collection",
+                "Monitor performance to identify optimal content partnerships",
+                "Geographic testing recommended to identify high-performing markets"
             ]
         )
     
@@ -250,20 +263,22 @@ class AdvertiserPreferencesAgent:
         Retrieved buying patterns for {preferences.advertiser} using {data_source}:
         
         Content Preferences:
-        {chr(10).join([f"• {pref}" for pref in preferences.content_preferences[:3]])}
+        {chr(10).join([f"• {pref}" for pref in preferences.content_preferences[:4]])}
+        
+        Network Preferences:
+        {chr(10).join([f"• {pref}" for pref in preferences.network_preferences[:3]])}
+        
+        Channel Strategy:
+        {chr(10).join([f"• {pref}" for pref in preferences.channel_preferences[:3]])}
+        
+        Geographic Insights:
+        {chr(10).join([f"• {pref}" for pref in preferences.geo_preferences[:2]])}
         
         Key Targeting Insights:
         {chr(10).join([f"• {insight}" for insight in preferences.preferred_targeting[:2]])}
         
-        Performance Metrics:
-        • CTR: {preferences.performance.get('ctr', 0):.2f}%
-        • VTR: {preferences.performance.get('vtr', 0):.1f}%
-        • Completion Rate: {preferences.performance.get('completion_rate', 0):.1f}%
+        Strategic Recommendations:
+        {chr(10).join([f"• {insight}" for insight in preferences.insights[:3]])}
         
-        Strategic Insights:
-        {chr(10).join([f"• {insight}" for insight in preferences.insights[:2]])}
-        
-        Historical patterns retrieved.
-        
-        CPM Range: ${preferences.cpm_range['min']}-${preferences.cpm_range['max']} based on network premium and historical performance.
+        Historical patterns successfully retrieved and analyzed.
         """ 

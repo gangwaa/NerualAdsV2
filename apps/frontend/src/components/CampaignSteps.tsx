@@ -28,7 +28,7 @@ const CampaignSteps: React.FC<CampaignStepsProps> = ({
     {
       id: 'advertiser_preferences',
       title: 'Historical Data',
-      description: 'Review performance data',
+      description: 'Analyze viewing patterns',
       color: 'purple'
     },
     {

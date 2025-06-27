@@ -175,10 +175,9 @@ class MultiAgentOrchestrator:
                 "advertiser": self.advertiser_preferences.advertiser,
                 "preferred_targeting": self.advertiser_preferences.preferred_targeting,
                 "content_preferences": self.advertiser_preferences.content_preferences,
+                "channel_preferences": self.advertiser_preferences.channel_preferences,
+                "network_preferences": self.advertiser_preferences.network_preferences,
                 "geo_preferences": self.advertiser_preferences.geo_preferences,
-                "device_preferences": self.advertiser_preferences.device_preferences,
-                "cpm_range": self.advertiser_preferences.cpm_range,
-                "performance": self.advertiser_preferences.performance,
                 "insights": self.advertiser_preferences.insights
             }
             
@@ -205,8 +204,9 @@ class MultiAgentOrchestrator:
             # Convert preferences to dict for audience agent
             preferences_dict = {
                 "content_preferences": self.advertiser_preferences.content_preferences,
-                "geo_preferences": self.advertiser_preferences.geo_preferences,
-                "device_preferences": self.advertiser_preferences.device_preferences
+                "channel_preferences": self.advertiser_preferences.channel_preferences,
+                "network_preferences": self.advertiser_preferences.network_preferences,
+                "geo_preferences": self.advertiser_preferences.geo_preferences
             }
             
             self.audience_analysis = await self.audience_agent.generate_audience_segments(
@@ -262,8 +262,9 @@ class MultiAgentOrchestrator:
             # Convert preferences to dict
             preferences_dict = {
                 "content_preferences": self.advertiser_preferences.content_preferences,
-                "geo_preferences": self.advertiser_preferences.geo_preferences,
-                "device_preferences": self.advertiser_preferences.device_preferences
+                "channel_preferences": self.advertiser_preferences.channel_preferences,
+                "network_preferences": self.advertiser_preferences.network_preferences,
+                "geo_preferences": self.advertiser_preferences.geo_preferences
             }
             
             # Convert audience segments to dict list

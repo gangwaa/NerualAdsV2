@@ -563,7 +563,7 @@ const AgenticWorkspace: React.FC = () => {
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">Analyzing Historical Data</h3>
-              <p className="text-gray-500">Retrieving advertiser buying patterns and preferences...</p>
+              <p className="text-gray-500">Analyzing historical viewing patterns and content preferences...</p>
             </div>
           );
         }
@@ -573,28 +573,49 @@ const AgenticWorkspace: React.FC = () => {
             <h3 className="text-lg font-semibold text-gray-900 mb-6">Historical Patterns Retrieved</h3>
             {currentStepData.data && (
               <div className="space-y-6">
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="bg-purple-50 p-4 rounded-lg">
-                    <h4 className="font-medium text-purple-900 mb-2">Preferred Targeting</h4>
+                    <h4 className="font-medium text-purple-900 mb-2">Content Preferences</h4>
                     <ul className="text-sm text-purple-800 space-y-1">
-                      {currentStepData.data.preferred_targeting?.map((item: string, index: number) => (
+                      {currentStepData.data.content_preferences?.map((item: string, index: number) => (
                         <li key={index}>• {item}</li>
-                      )) || <li>No data available</li>}
+                      )) || <li>No historical content data</li>}
                     </ul>
                   </div>
                   <div className="bg-purple-50 p-4 rounded-lg">
-                    <h4 className="font-medium text-purple-900 mb-2">Average CPM Range</h4>
-                    <div className="text-lg font-semibold text-purple-900">
-                      ${currentStepData.data.cpm_range?.min || 0} - ${currentStepData.data.cpm_range?.max || 0}
-                    </div>
+                    <h4 className="font-medium text-purple-900 mb-2">Channel Preferences</h4>
+                    <ul className="text-sm text-purple-800 space-y-1">
+                      {currentStepData.data.channel_preferences?.map((item: string, index: number) => (
+                        <li key={index}>• {item}</li>
+                      )) || <li>No historical channel data</li>}
+                    </ul>
                   </div>
                   <div className="bg-purple-50 p-4 rounded-lg">
-                    <h4 className="font-medium text-purple-900 mb-2">Historical Performance</h4>
-                    <div className="text-sm text-purple-800">
-                      <div>CTR: {currentStepData.data.performance?.ctr || 'N/A'}%</div>
-                      <div>VTR: {currentStepData.data.performance?.vtr || 'N/A'}%</div>
-                    </div>
+                    <h4 className="font-medium text-purple-900 mb-2">Network Preferences</h4>
+                    <ul className="text-sm text-purple-800 space-y-1">
+                      {currentStepData.data.network_preferences?.map((item: string, index: number) => (
+                        <li key={index}>• {item}</li>
+                      )) || <li>No historical network data</li>}
+                    </ul>
                   </div>
+                  <div className="bg-purple-50 p-4 rounded-lg">
+                    <h4 className="font-medium text-purple-900 mb-2">Geographic Focus</h4>
+                    <ul className="text-sm text-purple-800 space-y-1">
+                      {currentStepData.data.geo_preferences?.map((item: string, index: number) => (
+                        <li key={index}>• ZIP {item}</li>
+                      )) || <li>No geographic patterns</li>}
+                    </ul>
+                  </div>
+                </div>
+                
+                {/* Key Insights */}
+                <div className="bg-purple-50 p-4 rounded-lg">
+                  <h4 className="font-medium text-purple-900 mb-2">Key Insights</h4>
+                  <ul className="text-sm text-purple-800 space-y-1">
+                    {currentStepData.data.insights?.map((insight: string, index: number) => (
+                      <li key={index}>• {insight}</li>
+                    )) || <li>No insights available</li>}
+                  </ul>
                 </div>
               </div>
             )}
@@ -901,7 +922,7 @@ const AgenticWorkspace: React.FC = () => {
                     </h4>
                     <p className="neural-text-muted">
                       {agentState.current_step === 'campaign_data' ? 'Define campaign basics' :
-                       agentState.current_step === 'advertiser_preferences' ? 'Review performance data' :
+                       agentState.current_step === 'advertiser_preferences' ? 'Analyze viewing patterns' :
                        agentState.current_step === 'audience_generation' ? 'Analyze target audience' :
                        'Generate media strategy'}
                     </p>
@@ -936,7 +957,7 @@ const AgenticWorkspace: React.FC = () => {
                           <div className="flex items-center space-x-2">
                             <span>
                               {agentState.current_step === 'campaign_data' ? 'Continue to Historical Data' :
-                               agentState.current_step === 'advertiser_preferences' ? 'Continue to Audience Analysis' :
+                               agentState.current_step === 'advertiser_preferences' ? 'Generate Audience Segments' :
                                agentState.current_step === 'audience_generation' ? 'Continue to Media Plan' :
                                'Continue to Next Step'}
                             </span>
