@@ -759,35 +759,35 @@ const AgenticWorkspace: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Enhanced Header */}
-      <header className="neural-card-header border-b border-gray-200 px-6 py-4 bg-gradient-to-r from-blue-600 to-purple-600">
+      <header className="neural-card-header border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-6">
             <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-white bg-opacity-20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
                 <span className="text-white font-bold text-xl">⚡</span>
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-white">Neural Ads</h1>
-                <p className="text-blue-100">AI-Powered CTV Campaign Intelligence</p>
+                <h1 className="text-2xl font-bold text-gray-900">Neural Ads</h1>
+                <p className="text-gray-600">AI-Powered CTV Campaign Intelligence</p>
               </div>
             </div>
             
             {/* Client Logo Placeholder */}
             <div className="flex items-center space-x-3 ml-8">
-              <div className="w-8 h-8 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                <span className="text-white text-xs">🏢</span>
+              <div className="w-8 h-8 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-lg flex items-center justify-center">
+                <span className="text-blue-600 text-xs">🏢</span>
               </div>
-              <span className="text-blue-100 text-sm">Client Dashboard</span>
+              <span className="text-gray-600 text-sm">Client Dashboard</span>
             </div>
           </div>
           
           <div className="flex items-center space-x-4">
             {/* Agent Status Avatar */}
             <div className={`w-14 h-14 rounded-xl flex items-center justify-center transition-all duration-300 ${
-              agentState.avatar_state === 'thinking' ? 'bg-blue-500 bg-opacity-20 animate-pulse' :
-              agentState.avatar_state === 'generating' ? 'bg-green-500 bg-opacity-20' :
-              agentState.avatar_state === 'analyzing' ? 'bg-yellow-500 bg-opacity-20' :
-              'bg-purple-500 bg-opacity-20'
+              agentState.avatar_state === 'thinking' ? 'bg-blue-100 animate-pulse' :
+              agentState.avatar_state === 'generating' ? 'bg-green-100' :
+              agentState.avatar_state === 'analyzing' ? 'bg-yellow-100' :
+              'bg-purple-100'
             }`}>
               <span className="text-3xl">
                 {agentState.avatar_state === 'thinking' ? '🤔' :
@@ -796,12 +796,12 @@ const AgenticWorkspace: React.FC = () => {
               </span>
             </div>
             <div className="text-right">
-              <p className="text-white font-semibold">Neural Agent</p>
+              <p className="text-gray-900 font-semibold">Neural Agent</p>
               <div className="flex items-center space-x-2">
                 <div className={`w-2 h-2 rounded-full ${
-                  agentState.avatar_state === 'complete' ? 'bg-green-400' : 'bg-blue-400'
+                  agentState.avatar_state === 'complete' ? 'bg-green-500' : 'bg-blue-500'
                 } ${agentState.avatar_state !== 'complete' ? 'animate-pulse' : ''}`}></div>
-                <span className="text-blue-100 text-sm capitalize">{agentState.avatar_state}</span>
+                <span className="text-gray-600 text-sm capitalize">{agentState.avatar_state}</span>
               </div>
             </div>
             
@@ -809,7 +809,7 @@ const AgenticWorkspace: React.FC = () => {
             <button
               onClick={resetWorkflow}
               disabled={isProcessing}
-              className="neural-btn neural-btn-outline text-white border-white hover:bg-white hover:text-blue-600 px-4 py-2 text-sm"
+              className="neural-btn neural-btn-secondary px-4 py-2 text-sm"
               title="Reset Workflow"
             >
               🔄 Reset
