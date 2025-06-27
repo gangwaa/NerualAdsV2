@@ -1,286 +1,237 @@
-# CTV Campaign Management System
+# Neural Ads - Connected TV Advertising Platform 🚀
 
-A comprehensive Connected TV advertising system built with Turborepo, featuring an AI-powered campaign management interface with FastAPI backend and React frontend.
+> **Latest Update**: Enhanced Campaign Input Interface with File Upload & CSV Export
 
-## 🎯 System Overview
+A sophisticated agentic platform for Connected TV advertising campaign creation, featuring AI-powered workflow automation, intelligent audience targeting, and comprehensive media planning.
 
-This system is designed to help streaming services run targeted campaigns directly in the ad server. The system learns from log files and generates campaigns optimized for programmatic buying.
+## 🎯 Key Features
 
-### Key Components
+### **🤖 Multi-Agent Architecture**
+- **COT Reasoning Agent**: Transparent campaign decision-making with step-by-step reasoning
+- **Campaign Parser Agent**: Intelligent extraction of advertiser requirements  
+- **Preference Agent**: Historical data analysis and advertiser behavior insights
+- **Audience Agent**: Advanced demographic and psychographic targeting
+- **Line Item Generator**: Automated media plan creation with 50-100 line items
 
-1. **Encoder**: Learns advertising preferences from log data
-2. **UI/UX**: React-based co-pilot interface for campaign building  
-3. **COT Reasoning Agent**: Performs all campaign planning steps
-4. **Multi-agent Backend**: Communicates with users and handles campaign setup
+### **📊 Enhanced Campaign Input**
+- **Direct Text Input**: Large text area with structured campaign requirements template
+- **File Upload Support**: PDF, DOC, DOCX, and TXT campaign brief uploads
+- **Template Guidance**: Pre-formatted structure for advertiser, budget, objectives, timeline
+- **Multiple Input Methods**: Text area, file upload, or interactive chat interface
+
+### **⚡ Robust Workflow Management**
+- **4-Step Process**: Campaign Data (25%) → Historical Analysis (50%) → Audience Generation (75%) → Media Plan (100%)
+- **Real-time Progress**: Visual step indicators and percentage completion
+- **Error Handling**: Retry logic, debouncing, and state validation
+- **Step Advancement**: Smart buttons for workflow progression
+
+### **📈 Professional UI/UX**
+- **Neural Design System**: Custom CSS with gradient headers and modern styling
+- **2-Column Layout**: Main workspace with progress tracking panel
+- **Agent Avatars**: Visual states (🤔 thinking, ⚡ generating, 🔍 analyzing, ✅ complete)
+- **Real-time Updates**: Hot Module Replacement for development
+
+### **📋 Data Export & Management**
+- **CSV Download**: Export complete media plans with line items, budgets, CPM, audiences
+- **Advertiser Database**: Pre-loaded with 5 major advertisers (McDonald's, Unilever, Tide, Geico, Samsung)
+- **Campaign Archive**: Historical campaign data and performance insights
 
 ## 🏗️ Architecture
 
+### **Frontend** (React + Vite + TypeScript)
 ```
-ctv-mvp/
-├── apps/
-│   ├── backend/           # FastAPI Python service
-│   │   ├── main.py        # API entry point
-│   │   ├── models/        # Pydantic data models
-│   │   ├── parser/        # Campaign brief parsing
-│   │   ├── prefs/         # Advertiser preferences
-│   │   ├── audience/      # Audience segments
-│   │   ├── planner/       # Campaign planning logic
-│   │   ├── exporter/      # CSV export functionality
-│   │   └── data/          # Mock data and exports
-│   └── frontend/          # React TypeScript app
-│       ├── src/
-│       │   ├── components/    # React components
-│       │   ├── api.ts        # API client
-│       │   └── App.tsx       # Main application
-│       └── package.json
-├── packages/              # Shared packages
-├── turbo.json            # Turborepo configuration
-└── package.json          # Root configuration
+apps/frontend/src/
+├── components/
+│   ├── AgenticWorkspace.tsx    # Main 2x2 grid layout
+│   ├── ChatInterface.tsx       # Co-pilot chat system  
+│   ├── CampaignSteps.tsx      # Progress visualization
+│   └── ...
+├── api.ts                     # Backend communication
+└── index.css                 # Neural design system
 ```
 
-## 🚀 Getting Started
+### **Backend** (FastAPI + Python)
+```
+apps/backend/
+├── agents/                    # AI agent implementations
+│   ├── multi_agent_orchestrator.py
+│   ├── campaign_parser.py
+│   ├── advertiser_preferences.py
+│   ├── audience_generation.py
+│   └── lineitem_generator.py
+├── models/                    # Pydantic data models
+├── data/                      # Advertiser database & segments
+└── main.py                    # FastAPI application
+```
 
-### Prerequisites
+### **Shared Packages**
+```
+packages/
+├── ui/                        # Shared React components
+├── typescript-config/         # Shared TypeScript configs
+└── eslint-config/            # Code quality standards
+```
 
-- Node.js >= 18
-- Python 3.8+
-- npm
+## 🚀 Quick Start
 
-### Installation & Setup
+### **Prerequisites**
+- Node.js 18+ 
+- Python 3.11+
+- OpenAI API Key
 
-1. **Clone and navigate to the project:**
+### **Installation**
+
+1. **Clone Repository**
    ```bash
-   cd ctv-mvp
+   git clone <repository-url>
+   cd neural-ads-platform
    ```
 
-2. **Install root dependencies:**
+2. **Install Dependencies**
    ```bash
-   # Note: If you encounter npm cache issues, run:
-   # sudo chown -R $(whoami) ~/.npm
+   # Install Node.js dependencies
    npm install
-   ```
-
-3. **Set up the backend:**
-   ```bash
+   
+   # Setup Python virtual environment
    cd apps/backend
-   python3 -m venv .venv
-   source .venv/bin/activate
-   pip install fastapi uvicorn pydantic aiofiles openai
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   pip install -r requirements.txt
    ```
 
-4. **Install frontend dependencies:**
+3. **Environment Configuration**
    ```bash
-   cd apps/frontend
-   npm install
+   # Create .env file in apps/backend/
+   cat > apps/backend/.env << EOF
+   OPENAI_API_KEY=your_openai_api_key_here
+   OPENAI_MODEL=gpt-4
+   ENVIRONMENT=development
+   DEBUG=true
+   
+   # Agent Settings
+   MAX_RETRIES=3
+   TIMEOUT_SECONDS=30
+   CONFIDENCE_THRESHOLD=0.8
+   EOF
    ```
 
-### Running the Application
+4. **Start Services**
+   ```bash
+   # Terminal 1: Backend (FastAPI)
+   cd apps/backend
+   source .venv/bin/activate
+   uvicorn main:app --reload --host 0.0.0.0 --port 8000
+   
+   # Terminal 2: Frontend (React+Vite)
+   cd apps/frontend  
+   npm run dev
+   ```
 
-#### Option 1: Full System (Recommended)
-From the root directory:
-```bash
-npm run dev
+5. **Access Application**
+   - **Frontend**: http://localhost:5173
+   - **Backend API**: http://localhost:8000
+   - **API Docs**: http://localhost:8000/docs
+
+## 📖 Usage
+
+### **Campaign Creation Workflow**
+
+1. **Campaign Requirements**: 
+   - Type directly in the text area or upload a campaign brief
+   - Use the structured template for advertiser, budget, objectives, timeline
+   - Click "Analyze Campaign" to start the AI workflow
+
+2. **Step Progression**:
+   - **25%**: Campaign data parsing and validation
+   - **50%**: Historical advertiser preference analysis  
+   - **75%**: Audience generation and targeting
+   - **100%**: Media plan creation with line items
+
+3. **Export Results**:
+   - Download complete media plan as CSV
+   - Includes line item names, budgets, CPM, audiences, flight dates
+   - Ready for trafficking in ad servers
+
+### **Example Campaign Input**
 ```
-This runs both frontend and backend in parallel.
-
-#### Option 2: Individual Services
-
-**Backend only:**
-```bash
-cd apps/backend
-npm run dev:backend
-# or directly: source .venv/bin/activate && uvicorn main:app --reload --host 0.0.0.0
-```
-
-**Frontend only:**
-```bash
-cd apps/frontend
-npm run dev:frontend
-```
-
-### Access Points
-
-- **Frontend**: http://localhost:5173
-- **Backend API**: http://localhost:8000
-- **API Docs**: http://localhost:8000/docs
-
-## 🎮 How to Use
-
-### 1. Campaign Specification
-- Upload a campaign brief file (TXT, DOC, PDF) or paste text directly
-- The AI parser extracts campaign details (name, budget, dates, objectives)
-- Review and edit the parsed information
-
-### 2. Advertiser Preferences  
-- Select targeting preferences:
-  - **Networks**: Hulu, Roku, Tubi
-  - **Genres**: Sports, Comedy, Drama
-  - **Devices**: SmartTV, Mobile
-  - **Locations**: Los Angeles, New York, Chicago
-
-### 3. Audience Segments
-- Choose from available audience segments
-- View segment size, geography, and demographic tags
-- See total reach calculation
-
-### 4. Campaign Plan Generation
-- AI generates optimized line items
-- Review budget allocation across networks and segments
-- Download detailed CSV export for ad server import
-
-## 📊 API Endpoints
-
-### Core Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/parse` | POST | Parse campaign brief from file |
-| `/preferences/{adv_id}` | GET | Get advertiser preferences |
-| `/segments` | GET | List available audience segments |
-| `/plan` | POST | Generate campaign plan |
-| `/health` | GET | Health check |
-
-### Sample API Usage
-
-```bash
-# Health check
-curl http://localhost:8000/health
-
-# Get segments
-curl http://localhost:8000/segments
-
-# Get preferences
-curl http://localhost:8000/preferences/default
+• Advertiser: McDonald's
+• Budget: $500,000
+• Objective: Brand Awareness for New Menu Launch
+• Target Audience: Adults 25-54, Fast Food Consumers
+• Timeline: Q1 2024 (January - March)
+• Additional Notes: Focus on premium dayparts, avoid competitor content
 ```
 
-## 🧩 Key Features
+## 🛠️ Development
 
-### Frontend (React + TypeScript)
-- **Modern UI**: Built with Tailwind CSS for responsive design
-- **Chat Interface**: AI assistant with conversation history
-- **Chain of Thought**: Visual process indicator
-- **File Upload**: Drag-and-drop campaign brief parsing
-- **Interactive Forms**: Dynamic preference selection
-- **Data Tables**: Sortable segment and line item views
-- **CSV Export**: One-click campaign plan download
+### **Code Quality**
+- **TypeScript**: Strict type checking across frontend
+- **ESLint**: Consistent code style and error prevention  
+- **Prettier**: Automated code formatting
+- **Hot Reload**: Instant updates during development
 
-### Backend (FastAPI + Python)
-- **RESTful API**: OpenAPI/Swagger documentation
-- **File Processing**: Multi-format campaign brief parsing
-- **Data Models**: Pydantic validation and serialization
-- **Mock Data**: Sample preferences and segments
-- **CSV Generation**: Automated export functionality
-- **CORS Support**: Cross-origin requests enabled
+### **Testing Strategy**
+- Component testing with React Testing Library
+- API testing with FastAPI TestClient
+- E2E testing with Playwright
+- Type safety with TypeScript strict mode
 
-### Development Experience
-- **Turborepo**: Monorepo with optimized builds
-- **Hot Reload**: Both frontend and backend support
-- **TypeScript**: Full type safety across the stack
-- **Modular Architecture**: Easily extensible components
+### **Deployment**
+- **Frontend**: Vercel/Netlify deployment ready
+- **Backend**: Docker containerization included
+- **Database**: SQLite for development, PostgreSQL for production
+- **Monitoring**: Structured logging and health checks
 
-## 🔧 Configuration
+## 📊 Features Deep Dive
 
-### Backend Configuration
-- **API Base URL**: Configurable in `frontend/src/api.ts`
-- **Data Sources**: Mock data in `backend/data/`
-- **Export Location**: `backend/data/exports/`
+### **AI Agent Capabilities**
+- **Natural Language Processing**: Parse campaign briefs in various formats
+- **Historical Analysis**: Learn from past campaign performance
+- **Audience Intelligence**: Advanced demographic and behavioral targeting
+- **Budget Optimization**: Intelligent allocation across dayparts and channels
+- **Real-time Reasoning**: Transparent decision-making process
 
-### Frontend Configuration
-- **Proxy Settings**: Vite proxy in `frontend/vite.config.ts`
-- **Tailwind**: Custom theme in `frontend/tailwind.config.js`
+### **Data Management**
+- **Advertiser Profiles**: Rich behavioral and preference data
+- **Campaign History**: Performance analytics and optimization insights
+- **Audience Segments**: Pre-built and custom audience definitions
+- **Media Inventory**: CTV channel and daypart availability
 
-## 📁 Data Models
+## 🔧 Technical Stack
 
-### CampaignSpec
-```typescript
-{
-  name: string;
-  total_budget: number;
-  start_date: string;
-  end_date: string;
-  objective: string;
-  description?: string;
-}
-```
+- **Frontend**: React 18, Vite, TypeScript, Tailwind CSS
+- **Backend**: FastAPI, Python 3.11, Pydantic, OpenAI API
+- **Build System**: Turbo (monorepo), npm workspaces
+- **Development**: Hot Module Replacement, Auto-reload
+- **Deployment**: Docker, Docker Compose
 
-### LineItem
-```typescript
-{
-  id: string;
-  name: string;
-  budget: number;
-  networks: string[];
-  genres: string[];
-  devices: string[];
-  locations: string[];
-  segment_ids: number[];
-}
-```
+## 📈 Roadmap
 
-## 🚦 Development Roadmap
-
-### Phase 1: ✅ MVP Complete
-- [x] Turborepo setup
-- [x] Backend API with FastAPI
-- [x] Frontend with React + TypeScript
-- [x] Basic campaign workflow
-- [x] Mock data integration
-
-### Phase 2: 🔄 Enhanced Features
-- [ ] OpenAI integration for campaign parsing
-- [ ] Real database integration
-- [ ] Advanced campaign optimization
-- [ ] User authentication
-- [ ] Campaign analytics
-
-### Phase 3: 🔮 Advanced Capabilities
-- [ ] Multi-tenant support
-- [ ] Real-time bidding integration
-- [ ] Machine learning recommendations
+- [ ] Advanced audience lookalike modeling
+- [ ] Real-time bid optimization
+- [ ] Cross-platform campaign sync
+- [ ] Performance analytics dashboard  
 - [ ] A/B testing framework
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-1. **npm permission errors:**
-   ```bash
-   sudo chown -R $(whoami) ~/.npm
-   npm cache clean --force
-   ```
-
-2. **Python virtual environment:**
-   ```bash
-   cd apps/backend
-   rm -rf .venv
-   python3 -m venv .venv
-   source .venv/bin/activate
-   pip install -r requirements.txt  # if available
-   ```
-
-3. **Port conflicts:**
-   - Frontend: Change port in `frontend/vite.config.ts`
-   - Backend: Change port in `backend/main.py`
-
-### Development Tips
-- Use `npm run build` to build all packages
-- Use `npm run lint` to check code quality
-- Backend logs available at http://localhost:8000/docs
+- [ ] Brand safety verification
 
 ## 🤝 Contributing
 
-This is a proof-of-concept system. For production use:
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-1. Replace mock data with real databases
-2. Implement proper authentication
-3. Add comprehensive error handling
-4. Set up monitoring and logging
-5. Configure production deployment
+## 📝 License
 
-## 📄 License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-This project is for demonstration purposes. Modify as needed for your use case.
+## 🚨 Support
+
+For questions, issues, or feature requests:
+- Create an issue in this repository
+- Contact: [Your contact information]
 
 ---
 
-**Built with ❤️ using Turborepo, FastAPI, and React**
+**Neural Ads** - Transforming Connected TV Advertising with AI 🚀

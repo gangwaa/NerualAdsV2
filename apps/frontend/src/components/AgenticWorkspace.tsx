@@ -1,8 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import AgentThinking from './AgentThinking';
-import CampaignSteps from './CampaignSteps';
-import DataViewer from './DataViewer';
+import React, { useState, useEffect, useRef } from 'react';
 import ChatInterface from './ChatInterface';
+import CampaignSteps from './CampaignSteps';
 
 interface AgentState {
   current_step: string;
@@ -12,37 +10,167 @@ interface AgentState {
   avatar_state: 'idle' | 'thinking' | 'analyzing' | 'generating' | 'complete';
 }
 
+interface CampaignData {
+  step: string;
+  data: any;
+  confidence: number;
+  timestamp: string;
+}
+
+interface ChatMessage {
+  type: 'user' | 'agent';
+  content: string;
+  timestamp: string;
+}
+
 const AgenticWorkspace: React.FC = () => {
   const [agentState, setAgentState] = useState<AgentState>({
     current_step: 'campaign_data',
     progress: 0,
     last_reasoning: '',
     next_action: '',
-    avatar_state: 'thinking'
+    avatar_state: 'idle'
   });
 
-  const [campaignData, setCampaignData] = useState<Array<{step: string, data: any, confidence: number, timestamp: string}>>([]);
+  const [campaignData, setCampaignData] = useState<CampaignData[]>([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [chatMessages, setChatMessages] = useState<Array<{type: 'user' | 'agent', content: string, timestamp: string}>>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [campaignInput, setCampaignInput] = useState('');
+  
+  // Refs to prevent race conditions
+  const processingRef = useRef(false);
+  const lastRequestRef = useRef<number>(0);
 
-  // Manual step advancement instead of auto-advance
-  const advanceToNextStep = async () => {
-    if (isProcessing) return;
+  // Reset workflow on mount
+  useEffect(() => {
+    resetWorkflow();
+  }, []);
+
+  const resetWorkflow = async () => {
+    try {
+      await fetch('http://localhost:8000/agent/reset', { method: 'POST' });
+      setAgentState({
+        current_step: 'campaign_data',
+        progress: 0,
+        last_reasoning: '',
+        next_action: '',
+        avatar_state: 'idle'
+      });
+      setCampaignData([]);
+      setChatMessages([]);
+      setError(null);
+      setCampaignInput('');
+      processingRef.current = false;
+    } catch (error) {
+      console.error('Reset error:', error);
+    }
+  };
+
+  const validateStateTransition = (currentStep: string, nextStep: string): boolean => {
+    const validTransitions: { [key: string]: string } = {
+      'campaign_data': 'advertiser_preferences',
+      'advertiser_preferences': 'audience_generation', 
+      'audience_generation': 'campaign_generation',
+      'campaign_generation': 'complete'
+    };
     
+    return validTransitions[currentStep] === nextStep;
+  };
+
+  const advanceToNextStep = async () => {
+    // Prevent concurrent requests
+    if (processingRef.current || isProcessing) {
+      console.log('Already processing, skipping request');
+      return;
+    }
+
+    // Debouncing - prevent rapid clicks
+    const now = Date.now();
+    if (now - lastRequestRef.current < 2000) {
+      console.log('Request too recent, debouncing');
+      return;
+    }
+    lastRequestRef.current = now;
+
+    // Validate current state
+    if (agentState.progress >= 100) {
+      console.log('Workflow already complete');
+      return;
+    }
+
+    processingRef.current = true;
     setIsProcessing(true);
+    setError(null);
     setAgentState(prev => ({ ...prev, avatar_state: 'analyzing' }));
     
     try {
-      // Advance to next step
-      const advanceResponse = await fetch('http://localhost:8000/agent/advance', { method: 'POST' });
+      console.log(`🔄 Advancing from step: ${agentState.current_step} (${agentState.progress}%)`);
       
-      // Process the current step
-      const stepResponse = await fetch('http://localhost:8000/agent/process', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: `Continue with ${agentState.current_step} analysis`, files: [] })
-      });
-      const stepResult = await stepResponse.json();
+      // Step 1: Advance to next step with retry logic
+      let advanceResult;
+      let retryCount = 0;
+      const maxRetries = 3;
+      
+      while (retryCount < maxRetries) {
+        try {
+          const advanceResponse = await fetch('http://localhost:8000/agent/advance', { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          
+          if (!advanceResponse.ok) {
+            throw new Error(`Advance failed: ${advanceResponse.status}`);
+          }
+          
+          advanceResult = await advanceResponse.json();
+          console.log(`✅ Advanced to step: ${advanceResult.current_step}`);
+          break;
+        } catch (err) {
+          retryCount++;
+          console.warn(`Advance attempt ${retryCount} failed:`, err);
+          if (retryCount >= maxRetries) throw err;
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait before retry
+        }
+      }
+
+      // Validate state transition
+      if (!validateStateTransition(agentState.current_step, advanceResult.current_step)) {
+        throw new Error(`Invalid state transition: ${agentState.current_step} → ${advanceResult.current_step}`);
+      }
+      
+      // Step 2: Process the new step with retry logic
+      let stepResult;
+      retryCount = 0;
+      
+      while (retryCount < maxRetries) {
+        try {
+          const stepResponse = await fetch('http://localhost:8000/agent/process', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              input: `Process ${advanceResult.current_step} step`, 
+              files: [] 
+            })
+          });
+          
+          if (!stepResponse.ok) {
+            throw new Error(`Process failed: ${stepResponse.status}`);
+          }
+          
+          stepResult = await stepResponse.json();
+          console.log(`✅ Processed step: ${stepResult.step} with confidence: ${stepResult.confidence}%`);
+          break;
+        } catch (err) {
+          retryCount++;
+          console.warn(`Process attempt ${retryCount} failed:`, err);
+          if (retryCount >= maxRetries) throw err;
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait before retry
+        }
+      }
+
+      // Step 3: Update UI state atomically
+      const newProgress = getProgressForStep(stepResult.step);
       
       // Add agent reasoning to chat
       setChatMessages(prev => [...prev, {
@@ -51,38 +179,79 @@ const AgenticWorkspace: React.FC = () => {
         timestamp: new Date().toISOString()
       }]);
       
-      // Update campaign data
-      setCampaignData(prev => [...prev, {
-        step: stepResult.step,
-        data: stepResult.data,
-        confidence: stepResult.confidence,
-        timestamp: new Date().toISOString()
-      }]);
+      // Update campaign data - prevent duplicates
+      setCampaignData(prev => {
+        const existingIndex = prev.findIndex(item => item.step === stepResult.step);
+        const newData = {
+          step: stepResult.step,
+          data: stepResult.data,
+          confidence: stepResult.confidence,
+          timestamp: new Date().toISOString()
+        };
+        
+        if (existingIndex >= 0) {
+          const updated = [...prev];
+          updated[existingIndex] = newData;
+          return updated;
+        } else {
+          return [...prev, newData];
+        }
+      });
       
       // Update agent state
       setAgentState(prev => ({ 
         ...prev, 
         current_step: stepResult.step,
-        progress: Math.min(prev.progress + 25, 100),
+        progress: newProgress,
         last_reasoning: stepResult.reasoning,
         next_action: stepResult.action,
         avatar_state: stepResult.step === 'campaign_generation' ? 'complete' : 'thinking'
       }));
+
+      console.log(`🎉 Step completed: ${stepResult.step} (${newProgress}%)`);
       
     } catch (error) {
-      console.error('Step advancement error:', error);
+      console.error('❌ Step advancement error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setError(`Step advancement failed: ${errorMessage}`);
+      
       setChatMessages(prev => [...prev, {
         type: 'agent',
-        content: 'Sorry, I encountered an error advancing to the next step. Please try again.',
+        content: `Sorry, I encountered an error: ${errorMessage}. Please try again or reset the workflow.`,
         timestamp: new Date().toISOString()
       }]);
+      
+      setAgentState(prev => ({ ...prev, avatar_state: 'idle' }));
     } finally {
       setIsProcessing(false);
+      processingRef.current = false;
     }
   };
 
+  const getProgressForStep = (step: string): number => {
+    const progressMap: { [key: string]: number } = {
+      'campaign_data': 25,
+      'advertiser_preferences': 50,
+      'audience_generation': 75,
+      'campaign_generation': 100
+    };
+    return progressMap[step] || 0;
+  };
+
   const handleCampaignInput = async (input: string, files?: FileList) => {
+    // Prevent concurrent requests
+    if (processingRef.current || isProcessing) {
+      console.log('Already processing, skipping campaign input');
+      return;
+    }
+
+    processingRef.current = true;
     setIsProcessing(true);
+    setError(null);
+    
+    // Reset workflow state for new campaign
+    await resetWorkflow();
+    
     setAgentState(prev => ({ 
       ...prev, 
       current_step: 'campaign_data',
@@ -97,17 +266,36 @@ const AgenticWorkspace: React.FC = () => {
       timestamp: new Date().toISOString()
     }]);
     
-    // Reset campaign data for new workflow
-    setCampaignData([]);
-    
     try {
-      // Process initial step
-      const response = await fetch('http://localhost:8000/agent/process', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input, files: files ? Array.from(files) : [] })
-      });
-      const result = await response.json();
+      console.log('🚀 Starting new campaign workflow');
+      
+      // Process initial step with retry logic
+      let result;
+      let retryCount = 0;
+      const maxRetries = 3;
+      
+      while (retryCount < maxRetries) {
+        try {
+          const response = await fetch('http://localhost:8000/agent/process', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ input, files: files ? Array.from(files) : [] })
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Process failed: ${response.status}`);
+          }
+          
+          result = await response.json();
+          console.log(`✅ Initial processing complete: ${result.step}`);
+          break;
+        } catch (err) {
+          retryCount++;
+          console.warn(`Initial process attempt ${retryCount} failed:`, err);
+          if (retryCount >= maxRetries) throw err;
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
       
       // Add agent reasoning to chat
       setChatMessages(prev => [...prev, {
@@ -132,14 +320,20 @@ const AgenticWorkspace: React.FC = () => {
       }));
       
     } catch (error) {
-      console.error('Campaign processing error:', error);
+      console.error('❌ Campaign processing error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setError(`Campaign processing failed: ${errorMessage}`);
+      
       setChatMessages(prev => [...prev, {
         type: 'agent',
-        content: 'Sorry, I encountered an error processing your request. Please try again.',
+        content: `Sorry, I encountered an error processing your request: ${errorMessage}. Please try again.`,
         timestamp: new Date().toISOString()
       }]);
+      
+      setAgentState(prev => ({ ...prev, avatar_state: 'idle' }));
     } finally {
       setIsProcessing(false);
+      processingRef.current = false;
     }
   };
 
@@ -163,6 +357,84 @@ const AgenticWorkspace: React.FC = () => {
     return stepHasData || isWorkflowComplete();
   };
 
+  const canAdvanceToNextStep = () => {
+    return campaignData.length > 0 && 
+           agentState.progress < 100 && 
+           !isProcessing && 
+           !processingRef.current &&
+           agentState.avatar_state !== 'complete';
+  };
+
+  const downloadMediaPlan = () => {
+    const currentStepData = campaignData.find(data => data.step === 'campaign_generation');
+    
+    if (!currentStepData?.data?.line_items) {
+      console.warn('No line items data available for download');
+      return;
+    }
+
+    const lineItems = currentStepData.data.line_items;
+    
+    // Create CSV headers
+    const headers = ['Line Item Name', 'Budget', 'CPM', 'Audience', 'Status', 'Estimated Impressions', 'Flight Dates'];
+    
+    // Convert line items to CSV rows
+    const csvRows = [
+      headers.join(','),
+      ...lineItems.map((item: any) => [
+        `"${item.name || 'N/A'}"`,
+        item.budget || 0,
+        item.cpm || 0,
+        `"${item.audience || 'N/A'}"`,
+        `"${item.status || 'Ready'}"`,
+        item.estimated_impressions || Math.round((item.budget || 0) / (item.cpm || 1) * 1000),
+        `"${item.flight_dates || 'TBD'}"`
+      ].join(','))
+    ];
+    
+    // Create and download CSV file
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `neural-ads-media-plan-${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const fileContent = await file.text();
+      
+      // Append file content to campaign input
+      const fileInfo = `\n\n--- Uploaded File: ${file.name} ---\n${fileContent}`;
+      setCampaignInput(prev => prev + fileInfo);
+      
+      // Add notification
+      setChatMessages(prev => [...prev, {
+        type: 'agent',
+        content: `✅ File "${file.name}" uploaded successfully. The content has been added to your campaign requirements.`,
+        timestamp: new Date().toISOString()
+      }]);
+      
+    } catch (error) {
+      console.error('File upload error:', error);
+      setError('Failed to read file. Please ensure it\'s a valid text file.');
+    }
+    
+    // Clear the file input
+    event.target.value = '';
+  };
+
   const renderStepContent = () => {
     const currentStepData = campaignData.find(data => data.step === agentState.current_step);
     
@@ -170,9 +442,70 @@ const AgenticWorkspace: React.FC = () => {
       case 'campaign_data':
         if (campaignData.length === 0) {
           return (
-            <div className="text-center py-12">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Campaign Data Analysis</h3>
-              <p className="text-gray-500 mb-6">Start by entering your campaign requirements in the chat.</p>
+            <div className="py-8">
+              <h3 className="text-lg font-medium text-gray-900 mb-6">Campaign Data Analysis</h3>
+              
+              {/* Campaign Requirements Input */}
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Campaign Requirements
+                  </label>
+                  <textarea
+                    placeholder="Paste your campaign brief here or describe your requirements:&#10;&#10;• Advertiser: [Brand Name]&#10;• Budget: $[Amount]&#10;• Objective: [Brand Awareness/Performance/etc.]&#10;• Target Audience: [Demographics]&#10;• Timeline: [Start - End Date]&#10;• Additional Notes: [Any specific requirements]"
+                    className="w-full h-40 p-4 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    value={campaignInput}
+                    onChange={(e) => setCampaignInput(e.target.value)}
+                  />
+                </div>
+                
+                {/* Action Buttons */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    {/* Upload Campaign Brief Button */}
+                    <label className="neural-btn neural-btn-secondary cursor-pointer">
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx,.txt"
+                        className="hidden"
+                        onChange={handleFileUpload}
+                      />
+                      <div className="flex items-center space-x-2">
+                        <span>📎</span>
+                        <span>Upload Brief</span>
+                      </div>
+                    </label>
+                    
+                    {/* Clear Button */}
+                    <button
+                      onClick={() => setCampaignInput('')}
+                      className="text-sm text-gray-500 hover:text-gray-700"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  
+                  {/* Analyze Button */}
+                  <button
+                    onClick={() => campaignInput.trim() && handleCampaignInput(campaignInput)}
+                    disabled={!campaignInput.trim() || isProcessing}
+                    className={`neural-btn ${campaignInput.trim() && !isProcessing ? 'neural-btn-primary' : 'neural-btn-secondary'} px-6 py-2`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <span>🚀</span>
+                      <span>Analyze Campaign</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+              
+              {/* Helper Text */}
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>Tip:</strong> Provide as much detail as possible for better AI analysis. You can paste campaign briefs, 
+                  upload documents, or use the chat interface for interactive campaign planning.
+                </p>
+              </div>
             </div>
           );
         }
@@ -385,12 +718,24 @@ const AgenticWorkspace: React.FC = () => {
               </div>
             )}
             <div className="mt-6 p-4 bg-orange-50 rounded-lg">
-              <div className="flex items-center">
-                <div className="text-orange-600 mr-3">✓</div>
-                <div>
-                  <p className="text-sm font-medium text-orange-900">Campaign structure ready for deployment</p>
-                  <p className="text-sm text-orange-700">Confidence: {currentStepData?.confidence}%</p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="text-orange-600 mr-3">✓</div>
+                  <div>
+                    <p className="text-sm font-medium text-orange-900">Campaign structure ready for deployment</p>
+                    <p className="text-sm text-orange-700">Confidence: {currentStepData?.confidence}%</p>
+                  </div>
                 </div>
+                <button
+                  onClick={downloadMediaPlan}
+                  className="neural-btn neural-btn-primary px-6 py-2 text-sm"
+                  title="Download Media Plan as CSV"
+                >
+                  <div className="flex items-center space-x-2">
+                    <span>📥</span>
+                    <span>Download CSV</span>
+                  </div>
+                </button>
               </div>
             </div>
           </div>
@@ -412,150 +757,221 @@ const AgenticWorkspace: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Enhanced Header */}
+      <header className="neural-card-header border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-6">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">⚡</span>
+            <div className="flex items-center space-x-4">
+              {/* Company Logo */}
+              <div className="w-24 h-24 flex items-center justify-center">
+                <img 
+                  src="/logo.png" 
+                  alt="Company Logo" 
+                  className="w-24 h-24 object-contain"
+                />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Neural</h1>
-                <p className="text-sm text-gray-500">Ad Planning Assistant</p>
+                <h1 className="text-2xl font-bold text-gray-900">Neural Ads</h1>
+                <p className="text-gray-600">AI-Powered CTV Campaign Intelligence</p>
               </div>
+            </div>
+            
+            {/* Client Logo */}
+            <div className="flex items-center space-x-3 ml-8">
+              <div className="w-20 h-20 flex items-center justify-center">
+                <img 
+                  src="/logo_lg.jpeg" 
+                  alt="Client Logo" 
+                  className="w-20 h-20 object-contain rounded-lg"
+                />
+              </div>
+              <span className="text-gray-600 text-sm">Client Dashboard</span>
             </div>
           </div>
           
-          <div className="flex items-center space-x-3">
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+          <div className="flex items-center space-x-4">
+            {/* Agent Status Avatar */}
+            <div className={`w-14 h-14 rounded-xl flex items-center justify-center transition-all duration-300 ${
               agentState.avatar_state === 'thinking' ? 'bg-blue-100 animate-pulse' :
               agentState.avatar_state === 'generating' ? 'bg-green-100' :
               agentState.avatar_state === 'analyzing' ? 'bg-yellow-100' :
               'bg-purple-100'
             }`}>
-              <span className="text-2xl">
+              <span className="text-3xl">
                 {agentState.avatar_state === 'thinking' ? '🤔' :
                  agentState.avatar_state === 'generating' ? '⚡' :
                  agentState.avatar_state === 'analyzing' ? '🔍' : '✅'}
               </span>
             </div>
             <div className="text-right">
-              <p className="text-sm font-medium text-gray-900">Neural Agent</p>
-              <p className="text-xs text-gray-500 capitalize">{agentState.avatar_state}</p>
+              <p className="text-gray-900 font-semibold">Neural Agent</p>
+              <div className="flex items-center space-x-2">
+                <div className={`w-2 h-2 rounded-full ${
+                  agentState.avatar_state === 'complete' ? 'bg-green-500' : 'bg-blue-500'
+                } ${agentState.avatar_state !== 'complete' ? 'animate-pulse' : ''}`}></div>
+                <span className="text-gray-600 text-sm capitalize">{agentState.avatar_state}</span>
+              </div>
             </div>
+            
+            {/* Settings Button */}
+            <button
+              onClick={resetWorkflow}
+              disabled={isProcessing}
+              className="neural-btn neural-btn-secondary px-4 py-2 text-sm"
+              title="Settings"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Three Panel Layout */}
-      <div className="flex h-[calc(100vh-80px)]">
-        
-        {/* Left Sidebar - Chat Assistant */}
-        <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-          <div className="px-4 py-3 border-b border-gray-100">
-            <div className="flex items-center space-x-2 mb-2">
-              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                <span className="text-blue-600 font-bold">💬</span>
-              </div>
-              <h2 className="text-lg font-semibold text-gray-900">Chat Assistant</h2>
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 border-l-4 border-red-400 p-4 mx-6 mt-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <span className="text-red-400 text-lg">⚠️</span>
             </div>
-            <p className="text-sm text-gray-500">• 5 advertisers loaded</p>
-          </div>
-          <div className="flex-1">
-            <ChatInterface 
-              onCampaignInput={handleCampaignInput}
-              isProcessing={isProcessing}
-              agentState={agentState}
-              chatMessages={chatMessages}
-            />
+            <div className="ml-3">
+              <p className="text-sm text-red-700">{error}</p>
+              <button 
+                onClick={() => setError(null)}
+                className="text-xs text-red-600 underline mt-1"
+              >
+                Dismiss
+              </button>
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Right Side */}
-        <div className="flex-1 flex flex-col">
+      {/* Three Panel Layout */}
+      <div className="flex h-[calc(100vh-88px)]">
+        
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col p-6 space-y-6">
           
-          {/* Top Right - Progress Tracker */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Campaign Progress</h3>
-              <div className="text-sm text-gray-500">
-                {agentState.progress}% Complete
-              </div>
-            </div>
+          {/* Main Content */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
             
-            <div className="flex items-center justify-between mb-6">
-              {steps.map((step, index) => (
-                <div key={step.id} className="flex items-center">
-                  <div className={`
-                    w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium border-2 transition-all duration-200
-                    ${agentState.current_step === step.id ? 
-                      `${step.color} border-current text-white` : 
-                      isWorkflowComplete() ? 'bg-green-100 border-green-500 text-green-700' :
-                      index < steps.findIndex(s => s.id === agentState.current_step) ?
-                      'bg-green-100 border-green-500 text-green-700' :
-                      'bg-gray-100 border-gray-300 text-gray-500'
-                    }
-                  `}>
-                    {isWorkflowComplete() || index < steps.findIndex(s => s.id === agentState.current_step) ? 
-                      '✓' : index + 1
-                    }
+            {/* Chat Assistant Panel */}
+            <div className="neural-card neural-fade-in" style={{animationDelay: '0s'}}>
+              <div className="neural-card-header">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
+                    <span className="text-white font-bold text-lg">⚡</span>
                   </div>
-                  <div className="ml-2 text-sm">
-                    <div className={`font-medium ${
-                      agentState.current_step === step.id ? 'text-gray-900' : 'text-gray-600'
-                    }`}>
-                      {step.title}
-                    </div>
-                    <div className="text-gray-500 text-xs">
-                      {agentState.current_step === step.id && !isWorkflowComplete() ? 
-                        'Current Step' : 
-                        isWorkflowComplete() ? '✅ Complete' :
-                        index < steps.findIndex(s => s.id === agentState.current_step) ? 
-                        'Complete' : 'Pending'
-                      }
-                    </div>
+                  <div>
+                    <h4 className="neural-heading-3">Chat Assistant</h4>
+                    <p className="neural-text-muted">AI-powered campaign planning</p>
                   </div>
-                  {index < steps.length - 1 && (
-                    <div className={`mx-4 h-0.5 w-8 ${
-                      index < steps.findIndex(s => s.id === agentState.current_step) ? 
-                      'bg-green-500' : 'bg-gray-200'
-                    }`} />
-                  )}
                 </div>
-              ))}
+              </div>
+              
+              <div className="neural-card-content p-0 h-full">
+                <ChatInterface 
+                  onCampaignInput={handleCampaignInput}
+                  isProcessing={isProcessing}
+                  agentState={agentState}
+                  chatMessages={chatMessages}
+                />
+              </div>
             </div>
 
-            {/* Next Step Button */}
-            {!isWorkflowComplete() && campaignData.length > 0 && (
-              <div className="flex justify-center">
-                <button
-                  onClick={advanceToNextStep}
-                  disabled={isProcessing}
-                  className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors duration-200"
-                >
-                  {isProcessing ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      Next Step
-                      <svg className="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </>
-                  )}
-                </button>
+            {/* Current Step Content */}
+            <div className="neural-card neural-fade-in" style={{animationDelay: '0.1s'}}>
+              <div className="neural-card-header">
+                <div className="flex items-center space-x-3">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg ${
+                    agentState.current_step === 'campaign_data' ? 'bg-blue-500 text-white' :
+                    agentState.current_step === 'advertiser_preferences' ? 'bg-purple-500 text-white' :
+                    agentState.current_step === 'audience_generation' ? 'bg-green-500 text-white' :
+                    'bg-orange-500 text-white'
+                  }`}>
+                    {steps.find(s => s.id === agentState.current_step)?.icon || '📊'}
+                  </div>
+                  <div>
+                    <h4 className="neural-heading-3">
+                      {steps.find(s => s.id === agentState.current_step)?.title || 'Campaign Parameters'}
+                    </h4>
+                    <p className="neural-text-muted">
+                      {agentState.current_step === 'campaign_data' ? 'Define campaign basics' :
+                       agentState.current_step === 'advertiser_preferences' ? 'Review performance data' :
+                       agentState.current_step === 'audience_generation' ? 'Analyze target audience' :
+                       'Generate media strategy'}
+                    </p>
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
+              
+              <div className="neural-card-content">
+                {renderStepContent()}
+                
+                {/* Continue to Next Step Button */}
+                {(campaignData.length > 0 && agentState.current_step !== 'campaign_generation' && !isProcessing) && (
+                  <div className="mt-8 pt-6 border-t border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="text-sm text-gray-600">
+                          Step {Math.ceil(agentState.progress / 25) || 1} of 4 • {agentState.progress}% Complete
+                        </div>
+                      </div>
+                      <button
+                        onClick={advanceToNextStep}
+                        disabled={isProcessing || processingRef.current}
+                        className={`neural-btn ${isProcessing ? 'neural-btn-secondary' : 'neural-btn-primary'} px-8 py-3`}
+                        style={{ position: 'relative', zIndex: 999 }}
+                      >
+                        {isProcessing ? (
+                          <div className="flex items-center space-x-2">
+                            <div className="neural-spinner w-4 h-4"></div>
+                            <span>Processing...</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center space-x-2">
+                            <span>
+                              {agentState.current_step === 'campaign_data' ? 'Continue to Historical Data' :
+                               agentState.current_step === 'advertiser_preferences' ? 'Continue to Audience Analysis' :
+                               agentState.current_step === 'audience_generation' ? 'Continue to Media Plan' :
+                               'Continue to Next Step'}
+                            </span>
+                            <span className="text-lg">→</span>
+                          </div>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
 
-          {/* Main Content - Dynamic based on current step */}
-          <div className="flex-1 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            {renderStepContent()}
+            {/* Progress Tracker Panel */}
+            <div className="neural-card neural-fade-in" style={{animationDelay: '0.2s'}}>
+              <div className="neural-card-header">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
+                    <span className="text-white text-lg">📈</span>
+                  </div>
+                  <div>
+                    <h4 className="neural-heading-3">Progress Tracker</h4>
+                    <p className="neural-text-muted">Monitor workflow completion</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="neural-card-content">
+                <CampaignSteps 
+                  currentStep={agentState.current_step}
+                  progress={agentState.progress}
+                  campaignData={campaignData}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
