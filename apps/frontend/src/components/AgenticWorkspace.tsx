@@ -763,8 +763,14 @@ const AgenticWorkspace: React.FC = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-6">
             <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
-                <span className="text-white font-bold text-xl">⚡</span>
+              {/* Company Logo */}
+              <div className="w-24 h-24 flex items-center justify-center">
+                <img 
+                  src="/logo.png" 
+                  alt="Company Logo" 
+                  className="w-24 h-24 object-contain"
+                />
+              </div>
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Neural Ads</h1>
@@ -772,10 +778,15 @@ const AgenticWorkspace: React.FC = () => {
               </div>
             </div>
             
-            {/* Client Logo Placeholder */}
+            {/* Client Logo */}
             <div className="flex items-center space-x-3 ml-8">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-lg flex items-center justify-center">
-                <span className="text-blue-600 text-xs">🏢</span>
+              <div className="w-20 h-20 flex items-center justify-center">
+                <img 
+                  src="/logo_lg.jpeg" 
+                  alt="Client Logo" 
+                  className="w-20 h-20 object-contain rounded-lg"
+                />
+              </div>
               </div>
               <span className="text-gray-600 text-sm">Client Dashboard</span>
             </div>
@@ -805,14 +816,17 @@ const AgenticWorkspace: React.FC = () => {
               </div>
             </div>
             
-            {/* Reset Button */}
+            {/* Settings Button */}
             <button
               onClick={resetWorkflow}
               disabled={isProcessing}
               className="neural-btn neural-btn-secondary px-4 py-2 text-sm"
-              title="Reset Workflow"
+              title="Settings"
             >
-              🔄 Reset
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
             </button>
           </div>
         </div>
@@ -841,24 +855,38 @@ const AgenticWorkspace: React.FC = () => {
       {/* Three Panel Layout */}
       <div className="flex h-[calc(100vh-88px)]">
         
-        {/* Left Sidebar - Chat Assistant */}
-        <div className="w-80 flex flex-col">
-          <ChatInterface 
-            onCampaignInput={handleCampaignInput}
-            isProcessing={isProcessing}
-            agentState={agentState}
-            chatMessages={chatMessages}
-          />
-        </div>
-
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col p-6 space-y-6">
           
           {/* Main Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
             
+            {/* Chat Assistant Panel */}
+            <div className="neural-card neural-fade-in" style={{animationDelay: '0s'}}>
+              <div className="neural-card-header">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
+                    <span className="text-white font-bold text-lg">⚡</span>
+                  </div>
+                  <div>
+                    <h4 className="neural-heading-3">Chat Assistant</h4>
+                    <p className="neural-text-muted">AI-powered campaign planning</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="neural-card-content p-0 h-full">
+                <ChatInterface 
+                  onCampaignInput={handleCampaignInput}
+                  isProcessing={isProcessing}
+                  agentState={agentState}
+                  chatMessages={chatMessages}
+                />
+              </div>
+            </div>
+
             {/* Current Step Content */}
-            <div className="neural-card neural-fade-in">
+            <div className="neural-card neural-fade-in" style={{animationDelay: '0.1s'}}>
               <div className="neural-card-header">
                 <div className="flex items-center space-x-3">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg ${
@@ -925,7 +953,7 @@ const AgenticWorkspace: React.FC = () => {
             </div>
 
             {/* Progress Tracker Panel */}
-            <div className="neural-card neural-fade-in" style={{animationDelay: '0.1s'}}>
+            <div className="neural-card neural-fade-in" style={{animationDelay: '0.2s'}}>
               <div className="neural-card-header">
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">

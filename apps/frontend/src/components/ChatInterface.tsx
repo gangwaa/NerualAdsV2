@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 interface AgentState {
   current_step: string;
@@ -22,6 +22,24 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   chatMessages = []
 }) => {
   const [input, setInput] = useState('');
+  const chatMessagesRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when new messages are added or processing state changes
+  useEffect(() => {
+    const scrollToBottom = () => {
+      if (chatMessagesRef.current) {
+        chatMessagesRef.current.scrollTo({
+          top: chatMessagesRef.current.scrollHeight,
+          behavior: 'smooth'
+        });
+      }
+    };
+
+    // Small delay to ensure DOM is updated
+    const timeoutId = setTimeout(scrollToBottom, 100);
+    
+    return () => clearTimeout(timeoutId);
+  }, [chatMessages, isProcessing]);
   
   // Welcome message with better branding
   const displayMessages = chatMessages.length > 0 ? chatMessages : [
@@ -76,25 +94,17 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   ];
 
   return (
-    <div className="neural-sidebar flex flex-col h-full">
-      {/* Header */}
-      <div className="neural-sidebar-section">
-        <div className="flex items-center space-x-3 mb-4">
-          <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
-            <span className="text-white font-bold text-lg">⚡</span>
-          </div>
-          <div>
-            <h2 className="neural-sidebar-title mb-0">Chat Assistant</h2>
-            <div className="flex items-center space-x-2 text-sm">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="neural-text-muted">5 advertisers loaded</span>
-            </div>
-          </div>
+    <div className="flex flex-col h-full">
+      {/* Status Indicator */}
+      <div className="px-4 pt-4 pb-2">
+        <div className="flex items-center space-x-2 text-sm">
+          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+          <span className="neural-text-muted">5 advertisers loaded</span>
         </div>
       </div>
 
       {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-4">
+      <div ref={chatMessagesRef} className="flex-1 overflow-y-auto px-4 pb-4 space-y-4">
         {displayMessages.map((message, index) => (
           <div
             key={index}
@@ -157,7 +167,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       {/* Quick Suggestions */}
       {!isProcessing && chatMessages.length === 0 && (
         <div className="px-4 pb-4">
-          <div className="neural-card neural-card-content">
+          <div className="bg-gray-50 rounded-lg p-4">
             <div className="flex items-center space-x-2 mb-3">
               <span className="text-blue-600">✨</span>
               <span className="neural-text-muted text-xs font-semibold uppercase tracking-wide">
@@ -204,55 +214,54 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       )}
 
       {/* Input Area */}
-      <div className="neural-sidebar-section border-t border-gray-200">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* File Upload Section */}
-          <div className="neural-form-group">
-            <label className="neural-btn-secondary w-full cursor-pointer flex items-center justify-center space-x-2 group">
-              <svg className="w-4 h-4 text-gray-600 group-hover:text-blue-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-              </svg>
-              <span className="group-hover:text-blue-600 transition-colors">Upload Campaign Brief</span>
-              <input 
-                type="file" 
-                className="hidden" 
-                onChange={handleFileUpload}
-                accept=".txt,.doc,.docx,.pdf"
-                disabled={isProcessing}
-              />
-            </label>
-          </div>
-
-          {/* Text Input Section */}
-          <div className="neural-form-group">
-            <div className="flex space-x-2">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask a question..."
-                className="neural-input flex-1 text-sm"
-                disabled={isProcessing}
-              />
+      <div className="px-4 pb-4 border-t border-gray-200 bg-white">
+                  <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Enhanced Text Input Section */}
+            <div className="mt-4">
+            <div className="flex space-x-3 items-center">
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Type your campaign requirements..."
+                  className="w-full px-3 py-3 text-sm border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-200 bg-gray-50 focus:bg-white shadow-sm"
+                  disabled={isProcessing}
+                />
+                {/* Input hint overlay */}
+                {!input && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.959 8.959 0 01-4.906-1.478L3 21l2.478-5.094A8.959 8.959 0 013 12c0-4.418 3.582-8 8-8s8 3.582 8 8z" />
+                    </svg>
+                  </div>
+                )}
+              </div>
               <button
                 type="submit"
                 disabled={!input.trim() || isProcessing}
-                className={`neural-btn ${
+                className={`px-4 py-3 rounded-xl font-semibold text-white transition-all duration-200 shadow-lg ${
                   input.trim() && !isProcessing 
-                    ? 'neural-btn-primary' 
-                    : 'neural-btn-secondary opacity-50 cursor-not-allowed'
-                } px-4`}
+                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 hover:shadow-xl' 
+                    : 'bg-gray-300 cursor-not-allowed'
+                }`}
               >
-                <span className="text-lg">
-                  {isProcessing ? '⏳' : '📤'}
-                </span>
+                {isProcessing ? (
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                                 ) : (
+                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                   </svg>
+                 )}
               </button>
             </div>
           </div>
 
           {/* Status Indicator */}
           {agentState.avatar_state !== 'thinking' && (
-            <div className="neural-status-badge info text-xs flex items-center space-x-2">
+            <div className="mt-3 px-3 py-2 bg-blue-50 rounded-lg text-xs flex items-center space-x-2">
               <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
               <span>
                 {agentState.avatar_state === 'analyzing' ? 'Analyzing campaign data' :

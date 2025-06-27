@@ -23,28 +23,24 @@ const CampaignSteps: React.FC<CampaignStepsProps> = ({
       id: 'campaign_data',
       title: 'Campaign Parameters',
       description: 'Define campaign basics',
-      icon: '📊',
       color: 'blue'
     },
     {
       id: 'advertiser_preferences',
       title: 'Historical Data',
       description: 'Review performance data',
-      icon: '📈',
       color: 'purple'
     },
     {
       id: 'audience_generation',
       title: 'Audience Analysis',
       description: 'Analyze target audience',
-      icon: '🎯',
       color: 'green'
     },
     {
       id: 'campaign_generation',
       title: 'Media Plan',
       description: 'Generate media strategy',
-      icon: '📋',
       color: 'orange'
     }
   ];
@@ -131,13 +127,6 @@ const CampaignSteps: React.FC<CampaignStepsProps> = ({
               }`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-lg ${
-                      status === 'active' ? 'bg-blue-500 text-white' :
-                      status === 'completed' ? 'bg-green-500 text-white' :
-                      'bg-gray-300 text-gray-600'
-                    }`}>
-                      {status === 'completed' ? '✓' : step.icon}
-                    </div>
                     <div>
                       <h4 className="neural-heading-3">{step.title}</h4>
                       <p className="neural-text-muted">{step.description}</p>
@@ -229,13 +218,12 @@ const CampaignSteps: React.FC<CampaignStepsProps> = ({
           >
             {progress < 25 ? 'Waiting to start...' :
              progress < 100 ? `Processing Step ${Math.ceil(progress / 25)}...` : 
-             '✓ Campaign Ready'}
+             'Campaign Ready'}
           </button>
           
           {progress >= 25 && (
             <button className="neural-btn-secondary w-full">
               <span className="flex items-center justify-center">
-                <span className="mr-2">⚙️</span>
                 Modify Parameters
               </span>
             </button>
