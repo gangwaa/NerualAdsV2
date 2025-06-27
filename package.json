@@ -3,18 +3,18 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
-    "dev": "npm-run-all --parallel dev:frontend dev:backend",
-    "dev:frontend": "turbo run dev:frontend --parallel",
-    "dev:backend": "turbo run dev:backend --parallel",
+    "dev": "npx npm-run-all --parallel dev:frontend dev:backend",
+    "dev:frontend": "cd apps/frontend && npm run dev",
+    "dev:backend": "cd apps/backend && source .venv/bin/activate && uvicorn main:app --reload --host 0.0.0.0 --port 8000",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types"
   },
   "devDependencies": {
+    "npm-run-all": "^4.1.5",
     "prettier": "^3.6.0",
     "turbo": "^2.5.4",
-    "typescript": "5.8.2",
-    "npm-run-all": "^4.1.5"
+    "typescript": "5.8.2"
   },
   "engines": {
     "node": ">=18"

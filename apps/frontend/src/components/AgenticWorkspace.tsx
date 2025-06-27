@@ -771,7 +771,6 @@ const AgenticWorkspace: React.FC = () => {
                   className="w-24 h-24 object-contain"
                 />
               </div>
-              </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Neural Ads</h1>
                 <p className="text-gray-600">AI-Powered CTV Campaign Intelligence</p>
@@ -786,7 +785,6 @@ const AgenticWorkspace: React.FC = () => {
                   alt="Client Logo" 
                   className="w-20 h-20 object-contain rounded-lg"
                 />
-              </div>
               </div>
               <span className="text-gray-600 text-sm">Client Dashboard</span>
             </div>
