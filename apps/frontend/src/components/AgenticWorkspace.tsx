@@ -512,33 +512,33 @@ const AgenticWorkspace: React.FC = () => {
         
         return (
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-6">Campaign Parameters Identified</h3>
+            <h3 className="text-lg font-semibold text-white mb-6">Campaign Parameters Identified</h3>
             {currentStepData?.data && (
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Advertiser</label>
-                    <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
+                    <label className="block text-sm font-medium text-gray-200 mb-1">Advertiser</label>
+                    <div className="p-3 neural-glass rounded-lg text-white">
                       {currentStepData.data.advertiser || 'Not specified'}
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Campaign Budget</label>
-                    <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
+                    <label className="block text-sm font-medium text-gray-200 mb-1">Campaign Budget</label>
+                    <div className="p-3 neural-glass rounded-lg text-white">
                       {currentStepData.data.budget ? `$${currentStepData.data.budget.toLocaleString()}` : 'Not specified'}
                     </div>
                   </div>
                 </div>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Campaign Objective</label>
-                    <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
+                    <label className="block text-sm font-medium text-gray-200 mb-1">Campaign Objective</label>
+                    <div className="p-3 neural-glass rounded-lg text-white">
                       {currentStepData.data.objective || 'Not specified'}
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Timeline</label>
-                    <div className="p-3 bg-gray-50 rounded-lg text-gray-900">
+                    <label className="block text-sm font-medium text-gray-200 mb-1">Timeline</label>
+                    <div className="p-3 neural-glass rounded-lg text-white">
                       {currentStepData.data.timeline || 'Not specified'}
                     </div>
                   </div>
@@ -570,37 +570,37 @@ const AgenticWorkspace: React.FC = () => {
         
         return (
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-6">Historical Patterns Retrieved</h3>
+            <h3 className="text-lg font-semibold text-white mb-6">Historical Patterns Retrieved</h3>
             {currentStepData.data && (
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-purple-50 p-4 rounded-lg">
-                    <h4 className="font-medium text-purple-900 mb-2">Content Preferences</h4>
-                    <ul className="text-sm text-purple-800 space-y-1">
+                  <div className="neural-glass-purple p-4 rounded-lg">
+                    <h4 className="font-medium text-white mb-2">Content Preferences</h4>
+                    <ul className="text-sm text-gray-100 space-y-1">
                       {currentStepData.data.content_preferences?.map((item: string, index: number) => (
                         <li key={index}>• {item}</li>
                       )) || <li>No historical content data</li>}
                     </ul>
                   </div>
-                  <div className="bg-purple-50 p-4 rounded-lg">
-                    <h4 className="font-medium text-purple-900 mb-2">Channel Preferences</h4>
-                    <ul className="text-sm text-purple-800 space-y-1">
+                  <div className="neural-glass-purple p-4 rounded-lg">
+                    <h4 className="font-medium text-white mb-2">Channel Preferences</h4>
+                    <ul className="text-sm text-gray-100 space-y-1">
                       {currentStepData.data.channel_preferences?.map((item: string, index: number) => (
                         <li key={index}>• {item}</li>
                       )) || <li>No historical channel data</li>}
                     </ul>
                   </div>
-                  <div className="bg-purple-50 p-4 rounded-lg">
-                    <h4 className="font-medium text-purple-900 mb-2">Network Preferences</h4>
-                    <ul className="text-sm text-purple-800 space-y-1">
+                  <div className="neural-glass-purple p-4 rounded-lg">
+                    <h4 className="font-medium text-white mb-2">Network Preferences</h4>
+                    <ul className="text-sm text-gray-100 space-y-1">
                       {currentStepData.data.network_preferences?.map((item: string, index: number) => (
                         <li key={index}>• {item}</li>
                       )) || <li>No historical network data</li>}
                     </ul>
                   </div>
-                  <div className="bg-purple-50 p-4 rounded-lg">
-                    <h4 className="font-medium text-purple-900 mb-2">Geographic Focus</h4>
-                    <ul className="text-sm text-purple-800 space-y-1">
+                  <div className="neural-glass-purple p-4 rounded-lg">
+                    <h4 className="font-medium text-white mb-2">Geographic Focus</h4>
+                    <ul className="text-sm text-gray-100 space-y-1">
                       {currentStepData.data.geo_preferences?.map((item: string, index: number) => (
                         <li key={index}>• ZIP {item}</li>
                       )) || <li>No geographic patterns</li>}
@@ -609,9 +609,9 @@ const AgenticWorkspace: React.FC = () => {
                 </div>
                 
                 {/* Key Insights */}
-                <div className="bg-purple-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-purple-900 mb-2">Key Insights</h4>
-                  <ul className="text-sm text-purple-800 space-y-1">
+                <div className="neural-glass-purple p-4 rounded-lg">
+                  <h4 className="font-medium text-white mb-2">Key Insights</h4>
+                  <ul className="text-sm text-gray-100 space-y-1">
                     {currentStepData.data.insights?.map((insight: string, index: number) => (
                       <li key={index}>• {insight}</li>
                     )) || <li>No insights available</li>}
@@ -778,9 +778,20 @@ const AgenticWorkspace: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Enhanced Header */}
-      <header className="neural-card-header border-b border-gray-200">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -inset-10 opacity-50">
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
+          <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
+          <div className="absolute bottom-1/4 left-1/3 w-96 h-96 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
+        </div>
+      </div>
+      
+      {/* Main content */}
+      <div className="relative z-10">
+              {/* Enhanced Header */}
+        <header className="neural-glass-header border-b border-white border-opacity-20 backdrop-filter backdrop-blur-lg">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-6">
             <div className="flex items-center space-x-4">
@@ -793,8 +804,8 @@ const AgenticWorkspace: React.FC = () => {
                 />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Neural Ads</h1>
-                <p className="text-gray-600">AI-Powered CTV Campaign Intelligence</p>
+                <h1 className="text-2xl font-bold text-white">Neural Ads</h1>
+                <p className="text-gray-100">AI-Powered CTV Campaign Intelligence</p>
               </div>
             </div>
             
@@ -807,7 +818,7 @@ const AgenticWorkspace: React.FC = () => {
                   className="w-20 h-20 object-contain rounded-lg"
                 />
               </div>
-              <span className="text-gray-600 text-sm">Client Dashboard</span>
+              <span className="text-gray-100 text-sm">Client Dashboard</span>
             </div>
           </div>
           
@@ -826,12 +837,12 @@ const AgenticWorkspace: React.FC = () => {
               </span>
             </div>
             <div className="text-right">
-              <p className="text-gray-900 font-semibold">Neural Agent</p>
+              <p className="text-white font-semibold">Neural Agent</p>
               <div className="flex items-center space-x-2">
                 <div className={`w-2 h-2 rounded-full ${
-                  agentState.avatar_state === 'complete' ? 'bg-green-500' : 'bg-blue-500'
+                  agentState.avatar_state === 'complete' ? 'bg-green-400' : 'bg-blue-400'
                 } ${agentState.avatar_state !== 'complete' ? 'animate-pulse' : ''}`}></div>
-                <span className="text-gray-600 text-sm capitalize">{agentState.avatar_state}</span>
+                <span className="text-gray-100 text-sm capitalize">{agentState.avatar_state}</span>
               </div>
             </div>
             
@@ -881,20 +892,20 @@ const AgenticWorkspace: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-150px)] min-h-0">
             
             {/* Chat Assistant Panel */}
-            <div className="neural-card neural-fade-in flex flex-col max-h-full overflow-hidden" style={{animationDelay: '0s'}}>
-              <div className="neural-card-header flex-shrink-0">
+            <div className="neural-glass-card neural-fade-in flex flex-col max-h-full overflow-hidden shadow-glass" style={{animationDelay: '0s'}}>
+              <div className="neural-glass-header flex-shrink-0">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
+                  <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
                     <span className="text-white font-bold text-lg">⚡</span>
                   </div>
                   <div>
-                    <h4 className="neural-heading-3">Chat Assistant</h4>
-                    <p className="neural-text-muted">AI-powered campaign planning</p>
+                    <h4 className="text-white font-semibold text-lg">Chat Assistant</h4>
+                    <p className="text-gray-100 text-sm">AI-powered campaign planning</p>
                   </div>
                 </div>
               </div>
               
-              <div className="neural-card-content p-0 flex-1 min-h-0">
+              <div className="neural-glass-content p-0 flex-1 min-h-0">
                 <ChatInterface 
                   onCampaignInput={handleCampaignInput}
                   isProcessing={isProcessing}
@@ -905,22 +916,22 @@ const AgenticWorkspace: React.FC = () => {
             </div>
 
             {/* Current Step Content */}
-            <div className="neural-card neural-fade-in max-h-full overflow-hidden flex flex-col" style={{animationDelay: '0.1s'}}>
-              <div className="neural-card-header flex-shrink-0">
+            <div className="neural-glass-card neural-fade-in max-h-full overflow-hidden flex flex-col shadow-glass" style={{animationDelay: '0.1s'}}>
+              <div className="neural-glass-header flex-shrink-0">
                 <div className="flex items-center space-x-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg ${
-                    agentState.current_step === 'campaign_data' ? 'bg-blue-500 text-white' :
-                    agentState.current_step === 'advertiser_preferences' ? 'bg-purple-500 text-white' :
-                    agentState.current_step === 'audience_generation' ? 'bg-green-500 text-white' :
-                    'bg-orange-500 text-white'
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg shadow-lg ${
+                    agentState.current_step === 'campaign_data' ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white' :
+                    agentState.current_step === 'advertiser_preferences' ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white' :
+                    agentState.current_step === 'audience_generation' ? 'bg-gradient-to-r from-green-500 to-green-600 text-white' :
+                    'bg-gradient-to-r from-orange-500 to-orange-600 text-white'
                   }`}>
                     {steps.find(s => s.id === agentState.current_step)?.icon || '📊'}
                   </div>
                   <div>
-                    <h4 className="neural-heading-3">
+                    <h4 className="text-white font-semibold text-lg">
                       {steps.find(s => s.id === agentState.current_step)?.title || 'Campaign Parameters'}
                     </h4>
-                    <p className="neural-text-muted">
+                    <p className="text-gray-100 text-sm">
                       {agentState.current_step === 'campaign_data' ? 'Define campaign basics' :
                        agentState.current_step === 'advertiser_preferences' ? 'Analyze viewing patterns' :
                        agentState.current_step === 'audience_generation' ? 'Analyze target audience' :
@@ -930,7 +941,7 @@ const AgenticWorkspace: React.FC = () => {
                 </div>
               </div>
               
-              <div className="neural-card-content flex-1 min-h-0 overflow-y-auto">
+              <div className="neural-glass-content flex-1 min-h-0 overflow-y-auto">
                 {renderStepContent()}
                 
                 {/* Continue to Next Step Button */}
@@ -972,20 +983,20 @@ const AgenticWorkspace: React.FC = () => {
             </div>
 
             {/* Progress Tracker Panel */}
-            <div className="neural-card neural-fade-in max-h-full overflow-hidden flex flex-col" style={{animationDelay: '0.2s'}}>
-              <div className="neural-card-header flex-shrink-0">
+            <div className="neural-glass-card neural-fade-in max-h-full overflow-hidden flex flex-col shadow-glass" style={{animationDelay: '0.2s'}}>
+              <div className="neural-glass-header flex-shrink-0">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
+                  <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center shadow-lg">
                     <span className="text-white text-lg">📈</span>
                   </div>
                   <div>
-                    <h4 className="neural-heading-3">Progress Tracker</h4>
-                    <p className="neural-text-muted">Monitor workflow completion</p>
+                    <h4 className="text-white font-semibold text-lg">Progress Tracker</h4>
+                    <p className="text-gray-100 text-sm">Monitor workflow completion</p>
                   </div>
                 </div>
               </div>
               
-              <div className="neural-card-content flex-1 min-h-0 overflow-y-auto">
+              <div className="neural-glass-content flex-1 min-h-0 overflow-y-auto">
                 <CampaignSteps 
                   currentStep={agentState.current_step}
                   progress={agentState.progress}
@@ -995,6 +1006,7 @@ const AgenticWorkspace: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
