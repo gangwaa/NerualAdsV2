@@ -854,14 +854,14 @@ const AgenticWorkspace: React.FC = () => {
       <div className="flex h-[calc(100vh-88px)]">
         
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col p-6 space-y-6">
+        <div className="flex-1 flex flex-col p-6 space-y-6 h-full max-h-full overflow-hidden">
           
           {/* Main Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-150px)] min-h-0">
             
             {/* Chat Assistant Panel */}
-            <div className="neural-card neural-fade-in" style={{animationDelay: '0s'}}>
-              <div className="neural-card-header">
+            <div className="neural-card neural-fade-in flex flex-col max-h-full overflow-hidden" style={{animationDelay: '0s'}}>
+              <div className="neural-card-header flex-shrink-0">
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
                     <span className="text-white font-bold text-lg">⚡</span>
@@ -873,7 +873,7 @@ const AgenticWorkspace: React.FC = () => {
                 </div>
               </div>
               
-              <div className="neural-card-content p-0 h-full">
+              <div className="neural-card-content p-0 flex-1 min-h-0">
                 <ChatInterface 
                   onCampaignInput={handleCampaignInput}
                   isProcessing={isProcessing}
@@ -884,8 +884,8 @@ const AgenticWorkspace: React.FC = () => {
             </div>
 
             {/* Current Step Content */}
-            <div className="neural-card neural-fade-in" style={{animationDelay: '0.1s'}}>
-              <div className="neural-card-header">
+            <div className="neural-card neural-fade-in max-h-full overflow-hidden flex flex-col" style={{animationDelay: '0.1s'}}>
+              <div className="neural-card-header flex-shrink-0">
                 <div className="flex items-center space-x-3">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg ${
                     agentState.current_step === 'campaign_data' ? 'bg-blue-500 text-white' :
@@ -909,7 +909,7 @@ const AgenticWorkspace: React.FC = () => {
                 </div>
               </div>
               
-              <div className="neural-card-content">
+              <div className="neural-card-content flex-1 min-h-0 overflow-y-auto">
                 {renderStepContent()}
                 
                 {/* Continue to Next Step Button */}
@@ -951,8 +951,8 @@ const AgenticWorkspace: React.FC = () => {
             </div>
 
             {/* Progress Tracker Panel */}
-            <div className="neural-card neural-fade-in" style={{animationDelay: '0.2s'}}>
-              <div className="neural-card-header">
+            <div className="neural-card neural-fade-in max-h-full overflow-hidden flex flex-col" style={{animationDelay: '0.2s'}}>
+              <div className="neural-card-header flex-shrink-0">
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
                     <span className="text-white text-lg">📈</span>
@@ -964,7 +964,7 @@ const AgenticWorkspace: React.FC = () => {
                 </div>
               </div>
               
-              <div className="neural-card-content">
+              <div className="neural-card-content flex-1 min-h-0 overflow-y-auto">
                 <CampaignSteps 
                   currentStep={agentState.current_step}
                   progress={agentState.progress}

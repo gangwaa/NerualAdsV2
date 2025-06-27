@@ -24,24 +24,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [input, setInput] = useState('');
   const chatMessagesRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when new messages are added or processing state changes
-  useEffect(() => {
-    const scrollToBottom = () => {
-      if (chatMessagesRef.current) {
-        chatMessagesRef.current.scrollTo({
-          top: chatMessagesRef.current.scrollHeight,
-          behavior: 'smooth'
-        });
-      }
-    };
-
-    // Small delay to ensure DOM is updated
-    const timeoutId = setTimeout(scrollToBottom, 100);
-    
-    return () => clearTimeout(timeoutId);
-  }, [chatMessages, isProcessing]);
-  
-  // Welcome message with better branding
+  // Define displayMessages first so we can use it in useEffect
   const displayMessages = chatMessages.length > 0 ? chatMessages : [
     {
       type: 'agent',
@@ -49,6 +32,27 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       timestamp: new Date().toISOString()
     }
   ];
+
+  // Autoscroll functionality for floating chat panel
+  useEffect(() => {
+    const scrollToBottom = () => {
+      const element = chatMessagesRef.current;
+      if (element) {
+        // Use requestAnimationFrame to ensure DOM is updated
+        requestAnimationFrame(() => {
+          element.scrollTop = element.scrollHeight;
+        });
+      }
+    };
+
+    // Scroll when messages change or processing state changes
+    scrollToBottom();
+    
+    // Also scroll after a small delay to catch any delayed renders
+    const timeoutId = setTimeout(scrollToBottom, 100);
+    
+    return () => clearTimeout(timeoutId);
+  }, [displayMessages.length, isProcessing]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,9 +98,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   ];
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full max-h-full">
       {/* Status Indicator */}
-      <div className="px-4 pt-4 pb-2">
+      <div className="px-4 pt-4 pb-2 border-b border-gray-100 flex-shrink-0">
         <div className="flex items-center space-x-2 text-sm">
           <div className="w-2 h-2 bg-green-500 rounded-full"></div>
           <span className="neural-text-muted">5 advertisers loaded</span>
@@ -104,35 +108,34 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       </div>
 
       {/* Chat Messages */}
-      <div ref={chatMessagesRef} className="flex-1 overflow-y-auto px-4 pb-4 space-y-4">
+      <div ref={chatMessagesRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3 min-h-0 max-h-full">
         {displayMessages.map((message, index) => (
           <div
             key={index}
-            className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'} neural-fade-in`}
-            style={{animationDelay: `${index * 0.1}s`}}
+            className={`p-3 rounded-lg ${
+              message.type === 'user' 
+                ? 'bg-blue-50 border-blue-200 border ml-8' 
+                : 'bg-gray-50 border-gray-200 border mr-8'
+            }`}
           >
-            <div className={`flex items-start space-x-3 max-w-xs lg:max-w-sm ${
-              message.type === 'user' ? 'flex-row-reverse space-x-reverse' : ''
-            }`}>
-              {/* Avatar */}
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                message.type === 'agent' 
-                  ? 'bg-gradient-to-r from-blue-500 to-purple-500' 
-                  : 'bg-gradient-to-r from-gray-600 to-gray-700'
+            <div className="flex items-start space-x-3">
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                message.type === 'user'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-purple-500 text-white'
               }`}>
-                <span className="text-white text-xs font-bold">
-                  {message.type === 'agent' ? '🤖' : '👤'}
-                </span>
+                {message.type === 'user' ? 'U' : 'AI'}
               </div>
-
-              {/* Message Bubble */}
-              <div className={`neural-chat-message ${message.type} neural-slide-in`}>
-                <div className="text-sm whitespace-pre-line leading-relaxed">
+              <div className="flex-1">
+                <div className="text-sm font-medium text-gray-900 mb-1">
+                  {message.type === 'user' ? 'You' : 'Neural Assistant'}
+                </div>
+                <div className="text-sm text-gray-700 whitespace-pre-wrap">
                   {message.content}
                 </div>
-                <p className="text-xs opacity-75 mt-2 text-right">
+                <div className="text-xs text-gray-500 mt-1">
                   {new Date(message.timestamp).toLocaleTimeString()}
-                </p>
+                </div>
               </div>
             </div>
           </div>
@@ -140,19 +143,22 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         
         {/* Typing Indicator */}
         {isProcessing && (
-          <div className="flex justify-start neural-fade-in">
+          <div className="p-3 rounded-lg bg-gray-50 border-gray-200 border mr-8">
             <div className="flex items-start space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                <span className="text-white text-xs font-bold animate-pulse">🤖</span>
+              <div className="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center text-xs font-bold text-white animate-pulse">
+                AI
               </div>
-              <div className="neural-card neural-card-content py-3 px-4">
+              <div className="flex-1">
+                <div className="text-sm font-medium text-gray-900 mb-1">
+                  Neural Assistant
+                </div>
                 <div className="flex items-center space-x-2">
                   <div className="flex space-x-1">
                     <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
                     <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
                     <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                   </div>
-                  <span className="text-sm text-blue-700 font-medium">
+                  <span className="text-sm text-gray-600">
                     {agentState.avatar_state === 'analyzing' ? 'Analyzing data...' :
                      agentState.avatar_state === 'generating' ? 'Generating insights...' :
                      'Processing...'}
@@ -166,7 +172,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
       {/* Quick Suggestions */}
       {!isProcessing && chatMessages.length === 0 && (
-        <div className="px-4 pb-4">
+        <div className="px-4 pb-4 flex-shrink-0">
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="flex items-center space-x-2 mb-3">
               <span className="text-blue-600">✨</span>
@@ -213,64 +219,39 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         </div>
       )}
 
-      {/* Input Area */}
-      <div className="px-4 pb-4 border-t border-gray-200 bg-white">
-                  <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Enhanced Text Input Section */}
-            <div className="mt-4">
-            <div className="flex space-x-3 items-center">
-              <div className="flex-1 relative">
-                <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Type your campaign requirements..."
-                  className="w-full px-3 py-3 text-sm border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-200 bg-gray-50 focus:bg-white shadow-sm"
-                  disabled={isProcessing}
-                />
-                {/* Input hint overlay */}
-                {!input && (
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.959 8.959 0 01-4.906-1.478L3 21l2.478-5.094A8.959 8.959 0 013 12c0-4.418 3.582-8 8-8s8 3.582 8 8z" />
-                    </svg>
-                  </div>
-                )}
-              </div>
-              <button
-                type="submit"
-                disabled={!input.trim() || isProcessing}
-                className={`px-4 py-3 rounded-xl font-semibold text-white transition-all duration-200 shadow-lg ${
-                  input.trim() && !isProcessing 
-                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 hover:shadow-xl' 
-                    : 'bg-gray-300 cursor-not-allowed'
-                }`}
-              >
-                {isProcessing ? (
-                  <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  </div>
-                                 ) : (
-                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                   </svg>
-                 )}
-              </button>
+      {/* Input Area - Fixed at bottom */}
+      <div className="px-4 py-4 border-t border-gray-200 bg-white flex-shrink-0">
+        <form onSubmit={handleSubmit}>
+          {/* Enhanced Text Input Section */}
+          <div className="flex space-x-3 items-end bg-gray-50 rounded-2xl p-2 border border-gray-200 focus-within:border-blue-300 focus-within:ring-4 focus-within:ring-blue-100 transition-all duration-200">
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Type your message..."
+                className="w-full px-4 py-3 text-sm border-0 rounded-xl bg-transparent focus:outline-none resize-none"
+                disabled={isProcessing}
+              />
             </div>
+            <button
+              type="submit"
+              disabled={!input.trim() || isProcessing}
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 shadow-sm ${
+                input.trim() && !isProcessing 
+                  ? 'bg-blue-500 hover:bg-blue-600 text-white transform hover:scale-105' 
+                  : 'bg-gray-300 cursor-not-allowed text-gray-500'
+              }`}
+            >
+              {isProcessing ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+              )}
+            </button>
           </div>
-
-          {/* Status Indicator */}
-          {agentState.avatar_state !== 'thinking' && (
-            <div className="mt-3 px-3 py-2 bg-blue-50 rounded-lg text-xs flex items-center space-x-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-              <span>
-                {agentState.avatar_state === 'analyzing' ? 'Analyzing campaign data' :
-                 agentState.avatar_state === 'generating' ? 'Creating recommendations' :
-                 agentState.avatar_state === 'complete' ? 'Analysis complete' :
-                 'Ready to assist'}
-              </span>
-            </div>
-          )}
         </form>
       </div>
     </div>
