@@ -85,7 +85,7 @@ class AdvertiserPreferencesAgent:
         """Extract top preferences from vector data for a given prefix"""
         filtered = {k: v for k, v in vector_data.items() if k.startswith(prefix) and v > 0}
         sorted_items = sorted(filtered.items(), key=lambda x: x[1], reverse=True)
-        return [item[0].replace(f"{prefix}:", "").replace(";", " + ") for item, score in sorted_items[:top_n]]
+        return [item.replace(f"{prefix}:", "").replace(";", " + ") for item, score in sorted_items[:top_n]]
     
     def _calculate_cpm_range(self, advertiser_data: Dict) -> Dict[str, float]:
         """Calculate CPM range based on network and channel preferences"""
